@@ -5,6 +5,7 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <cfloat>
 #include "common/base.h"
 #include "common/pack.h"
 #include "common/timer.h"
@@ -21,6 +22,18 @@ inline bool isCudaSuccess(cudaError_t status)
     }
     return true;
 }
+
+
+bool check(const int *ref_out, const int *out, int m, int n)
+{
+    for (int i = 0; i < m * n; ++i) {
+        if (ref_out[i] != out[i]) {
+            return false;
+        }
+    }
+    return true;
+}
+
 template <typename InitFuncType, typename ExecFuncType, typename OpStateType>
 inline int benchmark(InitFuncType init_fn, ExecFuncType exec_fn, int X_BITS, int W_BITS, int *X,
                      int *W, int *X_PACKED, int *W_PACKED, int M, int N, int K, int *D, half *C,
@@ -116,15 +129,6 @@ inline int benchmark(InitFuncType init_fn, ExecFuncType exec_fn, int X_BITS, int
     return 0;
 }
 
-bool check(const int *ref_out, const int *out, int m, int n)
-{
-    for (int i = 0; i < m * n; ++i) {
-        if (ref_out[i] != out[i]) {
-            return false;
-        }
-    }
-    return true;
-}
 
 void print_matrix(int *matrix, int m, int n, bool hex)
 {
@@ -248,7 +252,11 @@ int main(int argc, char **argv)
     float true_gflop_count = (float)m / 1e9 * n * k * 2 * x_bits * w_bits;
     float gflop_count = (float)m / 1e9 * n * k * 2;
     float max_gflop = 0;
+#ifdef _WIN32
     float min_latency = FLT_MAX;
+#elif defined(__linux__)
+    float min_latency = FLT_MAX;
+#endif
     std::stringstream best_config;
 
     int *h_x = (int *)malloc(m * k * sizeof(int));

@@ -2,8 +2,6 @@
 build
 build_32
 build_64
-build-wasm/*
-build-wasm-simd/*
 libs
 .vs 
 *obj
@@ -18,14 +16,7 @@ build_*
 .cache
 models
 bin
-
-project/ByteNN-iOS/ByteNN-iOS.xcodeproj/project.xcworkspace/xcuserdata/*
-project/ByteNN-iOS/ByteNN-iOS.xcworkspace/xcuserdata/*
-project/ByteNN-iOS/Podfile.lock
-project/ByteNN-iOS/Gemfile.lock
-project/ByteNN-iOS/Pods/*
 libs
-source/device/webgl/node_modules/*
 cmake-build-debug/*
 project/mac
 log

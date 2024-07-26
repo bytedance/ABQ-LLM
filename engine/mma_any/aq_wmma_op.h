@@ -96,9 +96,9 @@ void AqBWMMAOp<QuantType, ThreadBlockShape, WarpShape, MmaShape, NStage>::initia
     }
     // printf("dyn shared_mem_size:%d\n", this->state.shared_mem_size);
     // calculate launch configuration
-    int gdimX = KernelImpl::GridMappingXYToMN ? (CEIL(M, KernelImpl::BLOCK_M)) :
+    int gdimX = KernelImpl::GridMapping ? (CEIL(M, KernelImpl::BLOCK_M)) :
                                                 (CEIL(N, KernelImpl::BLOCK_N));
-    int gdimY = KernelImpl::GridMappingXYToMN ? (CEIL(N, KernelImpl::BLOCK_N)) :
+    int gdimY = KernelImpl::GridMapping ? (CEIL(N, KernelImpl::BLOCK_N)) :
                                                 (CEIL(M, KernelImpl::BLOCK_M));
     this->state.gridDim = dim3(gdimX, gdimY, 1);
     this->state.blockDim = dim3(KernelImpl::blockDims, 1, 1);

@@ -47,7 +47,7 @@ struct AqBMMAKernel {
     static_assert(WARP_K % 128 == 0, "Only support warp shape WARP_K>=128 for performance.\n");
     // static_assert(WARP_M % 16 == 0, "Only support warp shape M>=16 for performance.\n");
     // precompute constants
-    static constexpr bool GridMappingXYToMN = GridMappingXYToMN;
+    static constexpr bool GridMapping = GridMappingXYToMN;
     // determine the number of threads
     static constexpr int blockDims = 32 * X_WARPS_NUMS * W_WARPS_NUMS;
 #if GPU_ARCH >= 80

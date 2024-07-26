@@ -54,7 +54,7 @@ struct AqBWMMAKernel {
                   "Only support binary wmma shape[8x8x128].\n");
 
     // precompute constants
-    static constexpr bool GridMappingXYToMN = GridMappingXYToMN;
+    static constexpr bool GridMapping = GridMappingXYToMN;
     // determine the number of threads
     static constexpr int blockDims = 32 * X_WARPS_NUMS * W_WARPS_NUMS;
 #if GPU_ARCH >= 80

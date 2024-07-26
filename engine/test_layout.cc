@@ -77,24 +77,6 @@ void print_layout(int row, int col){
     std::cout << std::endl;
 }
 
-
-void test_vector_string(std::vector<std::string>&io_option){
-    int in_num = 4;
-    std::stringstream input_option;
-    for(int i = 0; i< in_num; i++){
-        input_option << "\"" << "lsw" << ":" << "[" ;
-        for (int dim = 0; dim < 3; dim++){
-            input_option << 255 << ",";
-        }
-        input_option << 3 << "]";
-        io_option.push_back("-I");
-        // std::string name(input_option);
-        io_option.push_back(input_option.str());
-        input_option.str("");
-    }
-}
-
-
 int main(int argc, const char** argv) {
     print_layout(32,16);
     return 0;

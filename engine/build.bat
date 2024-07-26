@@ -29,7 +29,6 @@ cmake %BUILD_DIR% -G "Visual Studio 17 2022" ^
         -DENABLE_W7A7=ON ^
         -DENABLE_W8A8=ON ^
         -DCMAKE_BUILD_TYPE=!BUILD_TYPE! ^
-        -DCUDNN_PATH="C:/Program Files/NVIDIA/CUDNN/v9.0_11.8" ^
         -DCMAKE_EXPORT_COMPILE_COMMANDS=on
 
 cmake --build . --config !BUILD_TYPE! -j8

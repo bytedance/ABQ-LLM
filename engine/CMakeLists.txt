@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.10)
 
-project(CUDAQuant LANGUAGES CXX)
+project(ABQ-LLM LANGUAGES CXX)
 
 SET(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin/${PLATFORM_ABI})
 
@@ -29,8 +29,7 @@ set(COMMON_HEADER_DIRS
   ${PROJECT_SOURCE_DIR}
 )
 
-include(${CMAKE_CURRENT_SOURCE_DIR}/../../../cmake/CUDA.cmake)
-include(${CMAKE_CURRENT_SOURCE_DIR}/../../../cmake/cuDNN.cmake)
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/CUDA.cmake)
 
 if (CUDA_VERSION VERSION_LESS 11.0)
     add_definitions("-DENABLE_BF16")
@@ -85,15 +84,9 @@ if(ENABLE_W8A8)
 endif()
 
 
-set(CUTLASS_HEADER_DIR ${PROJECT_SOURCE_DIR}/../../../3rdparty/cuda/cutlass/include)
-list(APPEND CUTLASS_HEADER_DIR ${PROJECT_SOURCE_DIR}/../../../3rdparty/cuda/cutlass/tools/util/include)
+set(CUTLASS_HEADER_DIR ${PROJECT_SOURCE_DIR}/../3rdparty/cutlass/include)
+list(APPEND CUTLASS_HEADER_DIR ${PROJECT_SOURCE_DIR}/../3rdparty/cutlass/tools/util/include)
 
-# # profiling
-# option(USE_NVTX "Whether or not to use nvtx" ON)
-# if(USE_NVTX)
-#     message(STATUS "NVTX is enabled.")
-#     add_definitions("-DUSE_NVTX")
-# endif()
 
 # setting nvcc compiler flags
 set(SM_SETS 75 80 86 89 90)
@@ -163,16 +156,8 @@ message("CMAKE_CUDA_FLAGS_RELEASE: ${CMAKE_CUDA_FLAGS_RELEASE}")
 
 # cuda backend header dirs and libs append
 list(APPEND COMMON_HEADER_DIRS ${CUDA_PATH}/include)
-list(APPEND COMMON_HEADER_DIRS ${CUDNN_PATH}/include)
 list(APPEND COMMON_HEADER_DIRS ${CUTLASS_HEADER_DIR})
 list(APPEND COMMON_LIB_DIRS ${CUDA_PATH}/lib/x64)
-list(APPEND COMMON_LIB_DIRS ${CUDNN_PATH}/lib/x64)
-
-if (SPARSITY_SUPPORT)
-    list(APPEND COMMON_HEADER_DIRS ${CUSPARSELT_PATH}/include)
-    list(APPEND COMMON_LIB_DIRS ${CUSPARSELT_PATH}/lib64)
-    add_definitions(-DSPARSITY_ENABLED=1)
-endif()
 
 # Add header files and library dependencies
 include_directories( SYSTEM
@@ -182,12 +167,10 @@ link_directories(
   ${COMMON_LIB_DIRS}
 )
 
-
 set(QUANT_FILES "" CACHE INTERNAL "arbitrarily quant files")
 # gemm gemv quant sparse
 file(GLOB QUANT_FILES ${QUANT_FILES} ./common/*.cu)
 file(GLOB QUANT_FILES ${QUANT_FILES} ./wmma_any/*.cu)
-file(GLOB QUANT_FILES ${QUANT_FILES} ./wmma_base/*.cu)
 file(GLOB QUANT_FILES ${QUANT_FILES} ./mma_any/*.cu)
 file(GLOB QUANT_FILES ${QUANT_FILES} ./mma_any/aq_wmma_impl/*.cu)
 add_library(arbitrarily_quant STATIC ${QUANT_FILES})
@@ -195,24 +178,13 @@ set_property(TARGET arbitrarily_quant PROPERTY POSITION_INDEPENDENT_CODE  ON)
 set_property(TARGET arbitrarily_quant PROPERTY CUDA_RESOLVE_DEVICE_SYMBOLS  ON)
 target_link_libraries(arbitrarily_quant PUBLIC -lcudart)
 
-add_executable(test_w4a4_int_base test_w4a4_int_base.cu)
-target_link_libraries(test_w4a4_int_base arbitrarily_quant)
-
-add_executable(test_w4a4_uint_base test_w4a4_uint_base.cu)
-target_link_libraries(test_w4a4_uint_base arbitrarily_quant)
-
 add_executable(test_w4a4_int_wmma test_w4a4_int_wmma.cu)
 target_link_libraries(test_w4a4_int_wmma arbitrarily_quant)
-
 add_executable(test_w4a4_uint_wmma test_w4a4_uint_wmma.cu)
 target_link_libraries(test_w4a4_uint_wmma arbitrarily_quant)
-
 add_executable(test_any_wmma test_any_wmma.cu)
 target_link_libraries(test_any_wmma arbitrarily_quant)
-
 add_executable(test_any_mma test_any_mma.cu)
 target_link_libraries(test_any_mma arbitrarily_quant)
-
 add_executable(test_layout test_layout.cc)
-
 add_executable(gen_kernel gen_kernel.cpp)

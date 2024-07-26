@@ -30,3 +30,5 @@ cmake-build-debug/*
 project/mac
 log
 results
+*.egg-info
+dist

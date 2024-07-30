@@ -1,6 +1,6 @@
 # ABQ-LLM: Arbitrary-Bit Quantized Inference Acceleration for Large Language Models
 
-![ABQ-LLM](fig/ABQ-LLM.png)
+![ABQ-LLM](fig/ABQ.png)
 ABQ-LLM is a novel arbitrary bit quantization scheme that achieves excellent performance under various quantization settings while enabling efficient arbitrary bit computation at the inference level. The current release version supports the following features:
 
 - The ABQ-LLM algorithm is employed for precise weight-only quantization (W8A16, W4A16, W3A16, W2A16) and weight-activation quantization (W8A8, W6A6, W4A4, W3A8, W3A6, W2A8, W2A6).

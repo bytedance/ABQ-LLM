@@ -16,14 +16,12 @@ contourpy==1.2.1
 cycler==0.12.1
 DataProperty==1.0.1
 datasets==2.14.7
-deepspeed==0.11.1
 dill==0.3.7
 distro==1.9.0
 docstring_parser==0.16
 einops==0.8.0
 evaluate==0.4.2
 exceptiongroup==1.2.1
-fast-hadamard-transform==1.0.4.post1
 filelock==3.14.0
 fire==0.6.0
 fonttools==4.51.0

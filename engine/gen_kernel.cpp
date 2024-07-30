@@ -1,4 +1,4 @@
-// Copyright (C) ABQ.2024 (liusongwei.zju@bytedance.com)
+// Copyright (C) ABQ-LLM (liusongwei.zju@bytedance.com)
 // 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.

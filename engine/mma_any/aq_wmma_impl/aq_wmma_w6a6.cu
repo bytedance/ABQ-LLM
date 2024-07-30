@@ -1,4 +1,4 @@
-// Copyright (C) ABQ.2024 (xieyusheng.12@bytedance.com)
+// Copyright (C) ABQ-LLM (xieyusheng.12@bytedance.com)
 // 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.

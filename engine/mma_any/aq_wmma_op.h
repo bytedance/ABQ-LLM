@@ -1,17 +1,16 @@
-// Copyright (C) ABQ.2024 (liusongwei.zju@bytedance.com)
-// 
+// Copyright (C) ABQ-LLM (liusongwei.zju@bytedance.com)
+//
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// 
+//
 //          http://www.apache.org/licenses/LICENSE-2.0
-// 
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 
 #pragma once
 #include "common/base.h"
@@ -111,10 +110,10 @@ void AqBWMMAOp<QuantType, ThreadBlockShape, WarpShape, MmaShape, NStage>::initia
     }
     // printf("dyn shared_mem_size:%d\n", this->state.shared_mem_size);
     // calculate launch configuration
-    int gdimX = KernelImpl::GridMapping ? (CEIL(M, KernelImpl::BLOCK_M)) :
-                                                (CEIL(N, KernelImpl::BLOCK_N));
-    int gdimY = KernelImpl::GridMapping ? (CEIL(N, KernelImpl::BLOCK_N)) :
-                                                (CEIL(M, KernelImpl::BLOCK_M));
+    int gdimX =
+        KernelImpl::GridMapping ? (CEIL(M, KernelImpl::BLOCK_M)) : (CEIL(N, KernelImpl::BLOCK_N));
+    int gdimY =
+        KernelImpl::GridMapping ? (CEIL(N, KernelImpl::BLOCK_N)) : (CEIL(M, KernelImpl::BLOCK_M));
     this->state.gridDim = dim3(gdimX, gdimY, 1);
     this->state.blockDim = dim3(KernelImpl::blockDims, 1, 1);
     // printf("gdimX:%d gdimY:%d, KernelImpl::blockDim:%d\n", gdimX, gdimY, KernelImpl::blockDims);

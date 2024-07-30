@@ -5,7 +5,7 @@ ABQ-LLM....
 
 ## Contents
 - [Install](#install)
-- [ABQ-LLM Model Zoo](#abq-llm-model-zoo)
+- [Model Zoo](#abq-llm-model-zoo)
 - [Usage](#usage)
 - [Results](#results)
 - [Citation](#citation)

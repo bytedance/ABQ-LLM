@@ -12,6 +12,7 @@ cmake .. \
         -DENABLE_W2A6=ON \
         -DENABLE_W2A8=ON \
         -DENABLE_W3A3=ON \
+        -DENABLE_W3A8=ON \
         -DENABLE_W4A4=ON \
         -DENABLE_W4A8=ON \
         -DENABLE_W5A5=ON \

@@ -14,6 +14,7 @@ K=4096
 ./bin/test_any_wmma ${M} ${N} ${K} 4 2 1 > ./results/${M}x${N}x${K}_w2a4.txt
 ./bin/test_any_wmma ${M} ${N} ${K} 6 2 1 > ./results/${M}x${N}x${K}_w2a6.txt
 ./bin/test_any_wmma ${M} ${N} ${K} 8 2 1 > ./results/${M}x${N}x${K}_w2a8.txt
+./bin/test_any_wmma ${M} ${N} ${K} 8 3 1 > ./results/${M}x${N}x${K}_w3a8.txt
 ./bin/test_any_wmma ${M} ${N} ${K} 8 4 1 > ./results/${M}x${N}x${K}_w4a8.txt
 
 M=1
@@ -25,6 +26,7 @@ K=1024
 ./bin/test_any_wmma ${M} ${N} ${K} 4 2 1 > ./results/${M}x${N}x${K}_w2a4.txt
 ./bin/test_any_wmma ${M} ${N} ${K} 6 2 1 > ./results/${M}x${N}x${K}_w2a6.txt
 ./bin/test_any_wmma ${M} ${N} ${K} 8 2 1 > ./results/${M}x${N}x${K}_w2a8.txt
+./bin/test_any_wmma ${M} ${N} ${K} 8 3 1 > ./results/${M}x${N}x${K}_w3a8.txt
 ./bin/test_any_wmma ${M} ${N} ${K} 8 4 1 > ./results/${M}x${N}x${K}_w4a8.txt
 
 M=1
@@ -36,6 +38,7 @@ K=4096
 ./bin/test_any_wmma ${M} ${N} ${K} 4 2 1 > ./results/${M}x${N}x${K}_w2a4.txt
 ./bin/test_any_wmma ${M} ${N} ${K} 6 2 1 > ./results/${M}x${N}x${K}_w2a6.txt
 ./bin/test_any_wmma ${M} ${N} ${K} 8 2 1 > ./results/${M}x${N}x${K}_w2a8.txt
+./bin/test_any_wmma ${M} ${N} ${K} 8 3 1 > ./results/${M}x${N}x${K}_w3a8.txt
 ./bin/test_any_wmma ${M} ${N} ${K} 8 4 1 > ./results/${M}x${N}x${K}_w4a8.txt
 
 M=1
@@ -47,6 +50,7 @@ K=5120
 ./bin/test_any_wmma ${M} ${N} ${K} 4 2 1 > ./results/${M}x${N}x${K}_w2a4.txt
 ./bin/test_any_wmma ${M} ${N} ${K} 6 2 1 > ./results/${M}x${N}x${K}_w2a6.txt
 ./bin/test_any_wmma ${M} ${N} ${K} 8 2 1 > ./results/${M}x${N}x${K}_w2a8.txt
+./bin/test_any_wmma ${M} ${N} ${K} 8 3 1 > ./results/${M}x${N}x${K}_w3a8.txt
 ./bin/test_any_wmma ${M} ${N} ${K} 8 4 1 > ./results/${M}x${N}x${K}_w4a8.txt
 
 M=1
@@ -58,6 +62,7 @@ K=11008
 ./bin/test_any_wmma ${M} ${N} ${K} 4 2 1 > ./results/${M}x${N}x${K}_w2a4.txt
 ./bin/test_any_wmma ${M} ${N} ${K} 6 2 1 > ./results/${M}x${N}x${K}_w2a6.txt
 ./bin/test_any_wmma ${M} ${N} ${K} 8 2 1 > ./results/${M}x${N}x${K}_w2a8.txt
+./bin/test_any_wmma ${M} ${N} ${K} 8 3 1 > ./results/${M}x${N}x${K}_w3a8.txt
 ./bin/test_any_wmma ${M} ${N} ${K} 8 4 1 > ./results/${M}x${N}x${K}_w4a8.txt
 
 M=4
@@ -69,6 +74,7 @@ K=4096
 ./bin/test_any_wmma ${M} ${N} ${K} 4 2 1 > ./results/${M}x${N}x${K}_w2a4.txt
 ./bin/test_any_wmma ${M} ${N} ${K} 6 2 1 > ./results/${M}x${N}x${K}_w2a6.txt
 ./bin/test_any_wmma ${M} ${N} ${K} 8 2 1 > ./results/${M}x${N}x${K}_w2a8.txt
+./bin/test_any_wmma ${M} ${N} ${K} 8 3 1 > ./results/${M}x${N}x${K}_w3a8.txt
 ./bin/test_any_wmma ${M} ${N} ${K} 8 4 1 > ./results/${M}x${N}x${K}_w4a8.txt
 
 M=4
@@ -80,6 +86,7 @@ K=1024
 ./bin/test_any_wmma ${M} ${N} ${K} 4 2 1 > ./results/${M}x${N}x${K}_w2a4.txt
 ./bin/test_any_wmma ${M} ${N} ${K} 6 2 1 > ./results/${M}x${N}x${K}_w2a6.txt
 ./bin/test_any_wmma ${M} ${N} ${K} 8 2 1 > ./results/${M}x${N}x${K}_w2a8.txt
+./bin/test_any_wmma ${M} ${N} ${K} 8 3 1 > ./results/${M}x${N}x${K}_w3a8.txt
 ./bin/test_any_wmma ${M} ${N} ${K} 8 4 1 > ./results/${M}x${N}x${K}_w4a8.txt
 
 M=4
@@ -91,6 +98,7 @@ K=4096
 ./bin/test_any_wmma ${M} ${N} ${K} 4 2 1 > ./results/${M}x${N}x${K}_w2a4.txt
 ./bin/test_any_wmma ${M} ${N} ${K} 6 2 1 > ./results/${M}x${N}x${K}_w2a6.txt
 ./bin/test_any_wmma ${M} ${N} ${K} 8 2 1 > ./results/${M}x${N}x${K}_w2a8.txt
+./bin/test_any_wmma ${M} ${N} ${K} 8 3 1 > ./results/${M}x${N}x${K}_w3a8.txt
 ./bin/test_any_wmma ${M} ${N} ${K} 8 4 1 > ./results/${M}x${N}x${K}_w4a8.txt
 
 M=4
@@ -102,6 +110,7 @@ K=5120
 ./bin/test_any_wmma ${M} ${N} ${K} 4 2 1 > ./results/${M}x${N}x${K}_w2a4.txt
 ./bin/test_any_wmma ${M} ${N} ${K} 6 2 1 > ./results/${M}x${N}x${K}_w2a6.txt
 ./bin/test_any_wmma ${M} ${N} ${K} 8 2 1 > ./results/${M}x${N}x${K}_w2a8.txt
+./bin/test_any_wmma ${M} ${N} ${K} 8 3 1 > ./results/${M}x${N}x${K}_w3a8.txt
 ./bin/test_any_wmma ${M} ${N} ${K} 8 4 1 > ./results/${M}x${N}x${K}_w4a8.txt
 
 M=4
@@ -113,6 +122,7 @@ K=11008
 ./bin/test_any_wmma ${M} ${N} ${K} 4 2 1 > ./results/${M}x${N}x${K}_w2a4.txt
 ./bin/test_any_wmma ${M} ${N} ${K} 6 2 1 > ./results/${M}x${N}x${K}_w2a6.txt
 ./bin/test_any_wmma ${M} ${N} ${K} 8 2 1 > ./results/${M}x${N}x${K}_w2a8.txt
+./bin/test_any_wmma ${M} ${N} ${K} 8 3 1 > ./results/${M}x${N}x${K}_w3a8.txt
 ./bin/test_any_wmma ${M} ${N} ${K} 8 4 1 > ./results/${M}x${N}x${K}_w4a8.txt
 
 M=8
@@ -124,6 +134,7 @@ K=4096
 ./bin/test_any_wmma ${M} ${N} ${K} 4 2 1 > ./results/${M}x${N}x${K}_w2a4.txt
 ./bin/test_any_wmma ${M} ${N} ${K} 6 2 1 > ./results/${M}x${N}x${K}_w2a6.txt
 ./bin/test_any_wmma ${M} ${N} ${K} 8 2 1 > ./results/${M}x${N}x${K}_w2a8.txt
+./bin/test_any_wmma ${M} ${N} ${K} 8 3 1 > ./results/${M}x${N}x${K}_w3a8.txt
 ./bin/test_any_wmma ${M} ${N} ${K} 8 4 1 > ./results/${M}x${N}x${K}_w4a8.txt
 
 M=8
@@ -135,6 +146,7 @@ K=1024
 ./bin/test_any_wmma ${M} ${N} ${K} 4 2 1 > ./results/${M}x${N}x${K}_w2a4.txt
 ./bin/test_any_wmma ${M} ${N} ${K} 6 2 1 > ./results/${M}x${N}x${K}_w2a6.txt
 ./bin/test_any_wmma ${M} ${N} ${K} 8 2 1 > ./results/${M}x${N}x${K}_w2a8.txt
+./bin/test_any_wmma ${M} ${N} ${K} 8 3 1 > ./results/${M}x${N}x${K}_w3a8.txt
 ./bin/test_any_wmma ${M} ${N} ${K} 8 4 1 > ./results/${M}x${N}x${K}_w4a8.txt
 
 M=8
@@ -146,6 +158,7 @@ K=4096
 ./bin/test_any_wmma ${M} ${N} ${K} 4 2 1 > ./results/${M}x${N}x${K}_w2a4.txt
 ./bin/test_any_wmma ${M} ${N} ${K} 6 2 1 > ./results/${M}x${N}x${K}_w2a6.txt
 ./bin/test_any_wmma ${M} ${N} ${K} 8 2 1 > ./results/${M}x${N}x${K}_w2a8.txt
+./bin/test_any_wmma ${M} ${N} ${K} 8 3 1 > ./results/${M}x${N}x${K}_w3a8.txt
 ./bin/test_any_wmma ${M} ${N} ${K} 8 4 1 > ./results/${M}x${N}x${K}_w4a8.txt
 
 M=8
@@ -157,6 +170,7 @@ K=5120
 ./bin/test_any_wmma ${M} ${N} ${K} 4 2 1 > ./results/${M}x${N}x${K}_w2a4.txt
 ./bin/test_any_wmma ${M} ${N} ${K} 6 2 1 > ./results/${M}x${N}x${K}_w2a6.txt
 ./bin/test_any_wmma ${M} ${N} ${K} 8 2 1 > ./results/${M}x${N}x${K}_w2a8.txt
+./bin/test_any_wmma ${M} ${N} ${K} 8 3 1 > ./results/${M}x${N}x${K}_w3a8.txt
 ./bin/test_any_wmma ${M} ${N} ${K} 8 4 1 > ./results/${M}x${N}x${K}_w4a8.txt
 
 M=8
@@ -168,4 +182,5 @@ K=11008
 ./bin/test_any_wmma ${M} ${N} ${K} 4 2 1 > ./results/${M}x${N}x${K}_w2a4.txt
 ./bin/test_any_wmma ${M} ${N} ${K} 6 2 1 > ./results/${M}x${N}x${K}_w2a6.txt
 ./bin/test_any_wmma ${M} ${N} ${K} 8 2 1 > ./results/${M}x${N}x${K}_w2a8.txt
+./bin/test_any_wmma ${M} ${N} ${K} 8 3 1 > ./results/${M}x${N}x${K}_w3a8.txt
 ./bin/test_any_wmma ${M} ${N} ${K} 8 4 1 > ./results/${M}x${N}x${K}_w4a8.txt

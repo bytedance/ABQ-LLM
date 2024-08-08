@@ -22,6 +22,7 @@
 #include "aq_wmma_impl/aq_wmma_w2a8.h"
 
 #include "aq_wmma_impl/aq_wmma_w3a3.h"
+#include "aq_wmma_impl/aq_wmma_w3a8.h"
 
 #include "aq_wmma_impl/aq_wmma_w4a4.h"
 #include "aq_wmma_impl/aq_wmma_w4a8.h"

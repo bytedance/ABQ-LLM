@@ -55,18 +55,19 @@ struct AqBWMMAKernel {
     static constexpr bool quant_signed = QuantType::SIGNED;
     static constexpr int WARP_M_TILES = WARP_M / MMA_M;
     static constexpr int WARP_N_TILES = WARP_N / MMA_N;
-    static constexpr int X_WARPS_NUMS = BLOCK_M * X_BITS / MMA_M / WARP_M_TILES;
-    static constexpr int W_WARPS_NUMS = BLOCK_N * W_BITS / MMA_N / WARP_N_TILES;
+    static constexpr int X_WARPS_NUMS = CEIL(BLOCK_M * X_BITS, MMA_M) / WARP_M_TILES;
+    static constexpr int W_WARPS_NUMS = CEIL(BLOCK_N * W_BITS, MMA_N) / WARP_N_TILES;
     static_assert(WARP_K == MMA_K, "Only support warp shape K == Mma shape K.\n");
     static_assert(WARP_M % MMA_M == 0, "WARP_M must be an integer multiple of MMA_M.\n");
     static_assert(WARP_N % MMA_N == 0, "WARP_N must be an integer multiple of MMA_N.\n");
     static_assert(BLOCK_K % WARP_K == 0, "BLOCK_K must be an integer multiple of WARP_K.\n");
-    static_assert(kThreadBlockStage > 1, "kThreadBlockStage must be greater than 1.\n");
+    //static_assert(kThreadBlockStage > 1, "kThreadBlockStage must be greater than 1.\n");
     static_assert(WARP_K % 128 == 0, "Only support warp shape WARP_K>=128 for performance.\n");
     // static_assert(WARP_M % 16 == 0, "Only support warp shape M>=16 for performance.\n");
     static_assert(MMA_M == 8 && MMA_N == 8 && MMA_K == 128,
                   "Only support binary wmma shape[8x8x128].\n");
-
+    static_assert(X_WARPS_NUMS * W_WARPS_NUMS <= 32,
+                  "The number of warps in one block must less or equal than 32.\n");
     // precompute constants
     static constexpr bool GridMapping = GridMappingXYToMN;
     // determine the number of threads
@@ -84,8 +85,12 @@ struct AqBWMMAKernel {
 #endif // GPU_ARCH >= 80
 
     // The output results need to be stored in shem for scaling processing.
+    // static constexpr size_t output_buffer_size_static =
+    //     (BLOCK_M * X_BITS) * (BLOCK_N * W_BITS + SKEW) * sizeof(int32_t);
+
     static constexpr size_t output_buffer_size_static =
-        (BLOCK_M * X_BITS) * (BLOCK_N * W_BITS + SKEW) * sizeof(int32_t);
+        (MMA_M * WARP_M_TILES * X_WARPS_NUMS) * (MMA_N * WARP_N_TILES * W_WARPS_NUMS + SKEW) *
+        sizeof(int32_t);
 
     // mainloop interface
     __device__ __forceinline__ void mainLoop(const int M, const int N, const int K, const int *X,

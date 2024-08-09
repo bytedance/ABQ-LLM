@@ -1,11 +1,11 @@
 // Copyright (C) ABQ-LLM (liusongwei.zju@bytedance.com)
-// 
+//
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// 
+//
 //          http://www.apache.org/licenses/LICENSE-2.0
-// 
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -17,130 +17,10 @@
 #include <iostream>
 #include <sstream>
 #include <string>
-#include <cfloat>
 #include "common/base.h"
 #include "common/pack.h"
 #include "common/timer.h"
-#include "mma_any/aq_bmma_library.h"
-#include "mma_any/aq_bmma_op.h"
-
-/// benchmark func for wmma
-inline bool isCudaSuccess(cudaError_t status)
-{
-    cudaError_t error = status;
-    if (error != cudaSuccess) {
-        std::cerr << "Got bad cuda status: " << cudaGetErrorString(error) << std::endl;
-        return false;
-    }
-    return true;
-}
-
-
-bool check(const int *ref_out, const int *out, int m, int n)
-{
-    for (int i = 0; i < m * n; ++i) {
-        if (ref_out[i] != out[i]) {
-            return false;
-        }
-    }
-    return true;
-}
-
-template <typename InitFuncType, typename ExecFuncType, typename OpStateType>
-inline int benchmark(InitFuncType init_fn, ExecFuncType exec_fn, int X_BITS, int W_BITS, int *X,
-                     int *W, int *X_PACKED, int *W_PACKED, int M, int N, int K, int *D, half *C,
-                     int *H_OUT, const int *H_REF_OUT, bool bias, bool SIGNED, float &exec_dur,
-                     float &pack_dur, cudaStream_t stream = NULL, int warmup = 10, int repeat = 100)
-{
-    auto w_pack_func = [&]() {
-        if (W_BITS <= 32) {
-            cudaError_t err = launch_pack(W, W_PACKED, N, K, W_BITS, stream);
-            if (err != cudaSuccess) {
-                printf("Line %d: 'weight launch_pack' failed: %s\n", __LINE__,
-                       cudaGetErrorString(err));
-            }
-        } else {
-            printf("unsupport W_BITS %d: for launch_pack func \n", W_BITS);
-            return -1;
-        }
-        return 0;
-    };
-
-    auto x_pack_func = [&]() {
-        if (X_BITS <= 32) {
-            cudaError_t err = launch_pack(X, X_PACKED, M, K, X_BITS, stream);
-            if (err != cudaSuccess) {
-                printf("Line %d: 'activation launch_pack' failed: %s\n", __LINE__,
-                       cudaGetErrorString(err));
-            }
-        } else {
-            printf("unsupport X_BITS %d: for launch_pack func \n", X_BITS);
-            return -1;
-        }
-        return 0;
-    };
-
-    
-    cudaDeviceSynchronize();
-    if (cudaGetLastError() != cudaSuccess) {
-        std::cerr << "return due to previous error. ";
-        return -1;
-    }
-    w_pack_func();
-    x_pack_func();
-    cudaDeviceSynchronize();
-    if (cudaGetLastError() != cudaSuccess) {
-        std::cerr << "return due to previous error. ";
-        return -1;
-    }
-    OpStateType state = (*init_fn)(X_PACKED, W_PACKED, M, N, K, D, nullptr, false);
-    if (!state.initSuccess) {
-        std::cerr << "return due to unsuccessful initialization. " << std::endl;
-        return -1;
-    }
-    (*exec_fn)(state, stream);
-    cudaDeviceSynchronize();
-    if (!isCudaSuccess(cudaGetLastError())) {
-        std::cerr << "kernel failed." << std::endl;
-        return -1;
-    }
-
-    // profling exec func
-    CudaTimer exec_timer(stream);
-    for (int i = 0; i < warmup + repeat; i++) {
-        if (i == warmup)
-            exec_timer.start();
-        (*exec_fn)(state, stream);
-    }
-    exec_timer.stop();
-    if (!isCudaSuccess(cudaGetLastError())) {
-        std::cerr << "exec kernel failed." << std::endl;
-        return -1;
-    }
-    exec_dur = exec_timer.elapsed_msecs() / repeat;
-
-    // profling packing func
-    CudaTimer packing_timer(stream);
-    for (int i = 0; i < warmup + repeat; i++) {
-        if (i == warmup)
-            packing_timer.start();
-        x_pack_func();
-    }
-    packing_timer.stop();
-    if (!isCudaSuccess(cudaGetLastError())) {
-        std::cerr << "packing kernel failed." << std::endl;
-        return -1;
-    }
-    pack_dur = packing_timer.elapsed_msecs() / repeat;
-
-    // accuracy comparison
-    cudaMemcpy(H_OUT, D, M * N * sizeof(int), cudaMemcpyDeviceToHost);
-    if (!check(H_REF_OUT, H_OUT, M, N)) {
-        return -2;
-    }
-    return 0;
-}
-
+#include "test/test_mma/test_mma.h"
 
 void print_matrix(int *matrix, int m, int n, bool hex)
 {
@@ -202,37 +82,10 @@ void compute_ref(int *w, int *x, int *ref_c, int M, int N, int K, int W_BIT, int
     }
 }
 
-#define TEST(X_BITS, W_BITS, SIGNED, BM, BN, BK, WM, WN, WK, MMA_M, MMA_N, MMA_K, NSTAGE)      \
-    {                                                                                          \
-        std::cout << GPU_ARCH << " " << config_str << " ";                                     \
-        printf("%d %d %d %d %d %d %d %d %d %d ", BM, BN, BK, WM, WN, WK, MMA_M, MMA_N, MMA_K,  \
-               NSTAGE);                                                                        \
-        int ret = benchmark<AQ_INIT_FUN(AqBMMA), AQ_EXEC_FUN(AqBMMA), AQ_OP_STATE(AqBMMA)>( \
-            AQ_NAME_FUN(AqBMMA, Init, X_BITS, W_BITS, SIGNED, BM, BN, BK, WM, WN, WK, MMA_M,  \
-                        MMA_N, MMA_K, NSTAGE),                                                 \
-            AQ_NAME_FUN(AqBMMA, Exec, X_BITS, W_BITS, SIGNED, BM, BN, BK, WM, WN, WK, MMA_M,  \
-                        MMA_N, MMA_K, NSTAGE),                                                 \
-            x_bits, w_bits, d_x, d_w, d_x_pack, d_w_pack, m, n, k, d_out, nullptr, h_out,      \
-            h_ref_out, false, SIGNED, exec_dur, pack_dur, stream, warmup, repeat);             \
-        if (ret == 0 && gflop_count / exec_dur > max_gflop) {                                  \
-            max_gflop = gflop_count / exec_dur;                                                \
-            min_latency = exec_dur * 1e3;                                                      \
-            best_config.str("");                                                               \
-            best_config << BM << ", " << BN << ", " << BK << ", " << WM << ", " << WN << ", "  \
-                        << WK << ", " << MMA_M << ", " << MMA_N << ", " << MMA_K << ", "       \
-                        << NSTAGE;                                                             \
-        }                                                                                      \
-        printf("packing %f (us) exec %f (us) %f TOPS | %f B-TOPS | %s\n", pack_dur * 1e3,      \
-               exec_dur * 1e3, gflop_count / exec_dur, true_gflop_count / exec_dur,            \
-               ret == 0  ? "PASSED" :                                                          \
-               ret == -1 ? "ERROR" :                                                           \
-                           "FAILED");                                                          \
-    }
-
 int main(int argc, char **argv)
 {
     if (argc < 7) {
-        printf("Usage: ./test_any_wmma M N K X_BITS W_BITS SIGNED\n");
+        printf("Usage: ./test_any_mma M N K X_BITS W_BITS SIGNED\n");
         return -1;
     }
 
@@ -246,30 +99,11 @@ int main(int argc, char **argv)
         printf("Error, k must >= 128 and k % 128 == 0!");
         return -1;
     }
-    int repeat = 10;
+    int repeat = 1000;
     int warmup = 10;
-    float exec_dur = 0;
-    float pack_dur = 0;
+
     cudaStream_t stream;
     cudaStreamCreate(&stream);
-    std::string config_str;
-    std::stringstream s;
-    s << x_bits << " " << w_bits << " " << m << " " << n << " " << k << " ";
-    if (quant_sign) {
-        s << "sign ";
-    } else {
-        s << "unsigned ";
-    }
-    config_str = s.str();
-    float true_gflop_count = (float)m / 1e9 * n * k * 2 * x_bits * w_bits;
-    float gflop_count = (float)m / 1e9 * n * k * 2;
-    float max_gflop = 0;
-#ifdef _WIN32
-    float min_latency = FLT_MAX;
-#elif defined(__linux__)
-    float min_latency = FLT_MAX;
-#endif
-    std::stringstream best_config;
 
     int *h_x = (int *)malloc(m * k * sizeof(int));
     int *h_w = (int *)malloc(n * k * sizeof(int));
@@ -323,33 +157,104 @@ int main(int argc, char **argv)
     compute_ref(h_w_pack, h_x_pack, h_ref_out, m, n, k, w_bits, x_bits, quant_sign);
 
     switch (x_bits) {
-    case 4:
+    case 2:
         switch (w_bits) {
-        case 4:
-            TEST(4, 4, true, 8, 8, 128, 8, 32, 128, 8, 8, 128, 2);
-            TEST(4, 4, true, 8, 8, 128, 8, 32, 128, 8, 8, 128, 3);
-            TEST(4, 4, true, 8, 8, 128, 8, 32, 128, 8, 8, 128, 4);
-            TEST(4, 4, true, 8, 8, 128, 16, 16, 128, 8, 8, 128, 2);
-            TEST(4, 4, true, 8, 8, 128, 16, 16, 128, 8, 8, 128, 3);
-            TEST(4, 4, true, 8, 8, 128, 16, 16, 128, 8, 8, 128, 4);
-            TEST(4, 4, true, 8, 8, 128, 16, 32, 128, 8, 8, 128, 2);
-            TEST(4, 4, true, 8, 8, 128, 16, 32, 128, 8, 8, 128, 3);
-            TEST(4, 4, true, 8, 8, 128, 16, 32, 128, 8, 8, 128, 4);
-            TEST(4, 4, true, 8, 8, 128, 32, 32, 128, 8, 8, 128, 2);
-            TEST(4, 4, true, 8, 8, 128, 32, 32, 128, 8, 8, 128, 3);
-            TEST(4, 4, true, 8, 8, 128, 32, 32, 128, 8, 8, 128, 4);
-            TEST(4, 4, true, 8, 8, 256, 16, 16, 128, 8, 8, 128, 2);
-            TEST(4, 4, true, 8, 8, 256, 16, 16, 128, 8, 8, 128, 3);
-            TEST(4, 4, true, 8, 8, 256, 16, 16, 128, 8, 8, 128, 4);
+        case 2:
+            test_mma_w2a2(x_bits, w_bits, d_x, d_w, d_x_pack, d_w_pack, m, n, k, d_out, h_out,
+                           h_ref_out, warmup, repeat, quant_sign, stream);
             break;
         default:
-            std::cout << "unsupport w_bits:" << w_bits << std::endl;
+            printf("unsupport w%da%d\n", w_bits, x_bits);
+        }
+        break;
+    case 3:
+        switch (w_bits) {
+        case 3:
+            test_mma_w3a3(x_bits, w_bits, d_x, d_w, d_x_pack, d_w_pack, m, n, k, d_out, h_out,
+                           h_ref_out, warmup, repeat, quant_sign, stream);
+            break;
+        default:
+            printf("unsupport w%da%d\n", w_bits, x_bits);
+        }
+        break;
+    case 4:
+        switch (w_bits) {
+        case 2:
+            test_mma_w2a4(x_bits, w_bits, d_x, d_w, d_x_pack, d_w_pack, m, n, k, d_out, h_out,
+                           h_ref_out, warmup, repeat, quant_sign, stream);
+            break;
+        case 4:
+            test_mma_w4a4(x_bits, w_bits, d_x, d_w, d_x_pack, d_w_pack, m, n, k, d_out, h_out,
+                           h_ref_out, warmup, repeat, quant_sign, stream);
+            break;
+        default:
+            printf("unsupport w%da%d\n", w_bits, x_bits);
+        }
+        break;
+    case 5:
+        switch (w_bits) {
+        case 5:
+            test_mma_w5a5(x_bits, w_bits, d_x, d_w, d_x_pack, d_w_pack, m, n, k, d_out, h_out,
+                           h_ref_out, warmup, repeat, quant_sign, stream);
+            break;
+        default:
+            printf("unsupport w%da%d\n", w_bits, x_bits);
+        }
+        break;
+    case 6:
+        switch (w_bits) {
+        case 2:
+            test_mma_w2a6(x_bits, w_bits, d_x, d_w, d_x_pack, d_w_pack, m, n, k, d_out, h_out,
+                           h_ref_out, warmup, repeat, quant_sign, stream);
+            break;
+        case 6:
+            test_mma_w6a6(x_bits, w_bits, d_x, d_w, d_x_pack, d_w_pack, m, n, k, d_out, h_out,
+                           h_ref_out, warmup, repeat, quant_sign, stream);
+            break;
+        default:
+            printf("unsupport w%da%d\n", w_bits, x_bits);
+        }
+        break;
+    case 7:
+        switch (w_bits) {
+
+        case 7:
+            test_mma_w7a7(x_bits, w_bits, d_x, d_w, d_x_pack, d_w_pack, m, n, k, d_out, h_out,
+                           h_ref_out, warmup, repeat, quant_sign, stream);
+            break;
+
+        default:
+            printf("unsupport w%da%d\n", w_bits, x_bits);
+        }
+        break;
+    case 8:
+        switch (w_bits) {
+
+        case 2:
+            test_mma_w2a8(x_bits, w_bits, d_x, d_w, d_x_pack, d_w_pack, m, n, k, d_out, h_out,
+                           h_ref_out, warmup, repeat, quant_sign, stream);
+            break;
+        case 3:
+            test_mma_w3a8(x_bits, w_bits, d_x, d_w, d_x_pack, d_w_pack, m, n, k, d_out, h_out,
+                           h_ref_out, warmup, repeat, quant_sign, stream);
+            break;
+        case 4:
+            test_mma_w4a8(x_bits, w_bits, d_x, d_w, d_x_pack, d_w_pack, m, n, k, d_out, h_out,
+                           h_ref_out, warmup, repeat, quant_sign, stream);
+            break;
+        case 8:
+            test_mma_w8a8(x_bits, w_bits, d_x, d_w, d_x_pack, d_w_pack, m, n, k, d_out, h_out,
+                           h_ref_out, warmup, repeat, quant_sign, stream);
+            break;
+
+        default:
+            printf("unsupport w%da%d\n", w_bits, x_bits);
         }
         break;
     default:
-        std::cout << "unsupport x_bits:" << x_bits << std::endl;
+        printf("unsupport w%da%d\n", w_bits, x_bits);
     }
-    printf("The best kernel config is %s with %f TOPS\n", best_config.str().c_str(), max_gflop);
+
     free(h_x);
     free(h_w);
     free(h_x_pack);

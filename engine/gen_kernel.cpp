@@ -1,11 +1,11 @@
 // Copyright (C) ABQ-LLM (liusongwei.zju@bytedance.com)
-// 
+//
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// 
+//
 //          http://www.apache.org/licenses/LICENSE-2.0
-// 
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -36,15 +36,11 @@ int main(int argc, char **argv)
     constexpr int SHARED_MEM_PER_SM = 102400; // bytes
     constexpr int MAX_SHARED_MEM_PER_BLOCK_OPTIN = 101376; //bytes
     constexpr int REGS_PER_THREAD = 255;
-    constexpr int MMA_M = 8;
-    constexpr int MMA_N = 8;
-    constexpr int MMA_K = 128;
-    constexpr int WARP_K = MMA_K;
     unordered_set<string> st;
     unordered_map<int, vector<int>> BMS{ { 2, { 4, 8 } },   { 3, { 2, 8 } },    { 4, { 2, 4, 8 } },
                                          { 5, { 1, 8 } },   { 6, { 1, 4, 8 } }, { 7, { 1, 8 } },
                                          { 8, { 1, 4, 8 } } };
-	// BK = 128 is inefficient
+    // BK = 128 is inefficient
     vector<int> BKS{ 256, 384, 512 };
     //vector<int> BKS{ 512 };
     vector<int> batchs{ 1, 4, 8 };
@@ -57,8 +53,18 @@ int main(int argc, char **argv)
                     continue;
                 if (X_WARPS_NUMS * W_WARPS_NUMS >= 8) // inefficient
                     continue;
-                for (int WARP_M = MMA_M; WARP_M <= 64; WARP_M += MMA_M) {
-                    for (int WARP_N = MMA_N; WARP_N <= WARP_K; WARP_N += MMA_N) {
+                for (int WARP_M = 8; WARP_M <= 64; WARP_M += 8) {
+                    for (int WARP_N = 8; WARP_N <= 128; WARP_N += 8) {
+                        int MMA_M = 8;
+                        int MMA_N = 8;
+                        int MMA_K = 128;
+                        if (WARP_M % 16 == 0) {
+                            MMA_M = 16;
+                            MMA_K = 256;
+                        }
+                        int WARP_K = MMA_K;
+                        if (BLOCK_K % MMA_K != 0)
+                            continue;
                         int WARP_M_TILES = WARP_M / MMA_M;
                         int WARP_N_TILES = WARP_N / MMA_N;
 
@@ -72,19 +78,19 @@ int main(int argc, char **argv)
                         int BLOCK_N = W_WARPS_NUMS * WARP_N_TILES * MMA_N / w_bits;
                         if (BLOCK_M > 8) // inefficient for small batch
                             continue;
-                        
-						bool efficient_m = false;
+
+                        bool efficient_m = false;
                         for (auto b : BMS[x_bits]) {
                             if (BLOCK_M == b) {
                                 efficient_m = true;
                                 break;
-							}
+                            }
                         }
                         if (!efficient_m)
                             continue;
-						
-                        
-                        if (BLOCK_N < 32 || BLOCK_N % 16 != 0)	// BLOCK_N < 32 is inefficient for large N,K
+
+                        if (BLOCK_N < 32 ||
+                            BLOCK_N % 16 != 0) // BLOCK_N < 32 is inefficient for large N,K
                             continue;
                         if (BLOCK_N > MMA_K) {
                             if (BLOCK_N % MMA_K != 0)
@@ -103,7 +109,7 @@ int main(int argc, char **argv)
                                                                BLOCK_N * BLOCK_K * w_bits / 8);
                         } else {
                             max_stages = k_stages;
-						}
+                        }
                         size_t shared_mem_size =
                             max(input_buffer_size, output_buffer_size); // bytes
                         if (shared_mem_size >= SHARED_MEM_PER_SM ||
@@ -137,9 +143,9 @@ int main(int argc, char **argv)
                                 continue;
                             printf(
                                 "AQ_INSTANTIATE_FUN(%s, %d, %d, %s, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d);\n",
-                                use_mma ? "AqBMMA" : "AqBWMMA", x_bits, w_bits, quant_sign ? "true" : "false", BLOCK_M, BLOCK_N,
-                                BLOCK_K, WARP_M, WARP_N, WARP_K, MMA_M, MMA_N, MMA_K,
-                                kThreadBlockStage);
+                                use_mma ? "AqBMMA" : "AqBWMMA", x_bits, w_bits,
+                                quant_sign ? "true" : "false", BLOCK_M, BLOCK_N, BLOCK_K, WARP_M,
+                                WARP_N, WARP_K, MMA_M, MMA_N, MMA_K, kThreadBlockStage);
                         }
                     }
                 }

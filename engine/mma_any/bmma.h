@@ -60,6 +60,56 @@ DEVICE_INLINE
 void storeMatrixSync(const fragment_c<ShapeBase<8, 8, 128>, int32_t> &c, int *base,
                      const int offset, const int ldm);
 
+// *** BMMA: 16x8x128 int32.b1 ***
+template <> struct fragment_a_rowmajor<ShapeBase<16, 8, 128>> {
+    uint32_t x[2];
+};
+template <> struct fragment_b_colmajor<ShapeBase<16, 8, 128>> {
+    uint32_t x;
+};
+template <> struct fragment_c<ShapeBase<16, 8, 128>, int32_t> {
+    int32_t x[4] = { 0 };
+};
+DEVICE_INLINE
+void loadMatrixSync(fragment_a_rowmajor<ShapeBase<16, 8, 128>> &a, const int *base,
+                    const int offset, const int ldm);
+DEVICE_INLINE
+void loadMatrixSync(fragment_b_colmajor<ShapeBase<16, 8, 128>> &b, const int *base,
+                    const int offset, const int ldm);
+DEVICE_INLINE
+void bmmaSync(fragment_c<ShapeBase<16, 8, 128>, int32_t> &d,
+              const fragment_a_rowmajor<ShapeBase<16, 8, 128>> &a,
+              const fragment_b_colmajor<ShapeBase<16, 8, 128>> &b,
+              const fragment_c<ShapeBase<16, 8, 128>, int32_t> &c);
+DEVICE_INLINE
+void storeMatrixSync(const fragment_c<ShapeBase<16, 8, 128>, int32_t> &c, int *base,
+                     const int offset, const int ldm);
+
+// *** BMMA: 16x8x256 int32.b1 ***
+template <> struct fragment_a_rowmajor<ShapeBase<16, 8, 256>> {
+    uint32_t x[4];
+};
+template <> struct fragment_b_colmajor<ShapeBase<16, 8, 256>> {
+    uint32_t x[2];
+};
+template <> struct fragment_c<ShapeBase<16, 8, 256>, int32_t> {
+    int32_t x[4] = { 0 };
+};
+DEVICE_INLINE
+void loadMatrixSync(fragment_a_rowmajor<ShapeBase<16, 8, 256>> &a, const int *base,
+                    const int offset, const int ldm);
+DEVICE_INLINE
+void loadMatrixSync(fragment_b_colmajor<ShapeBase<16, 8, 256>> &b, const int *base,
+                    const int offset, const int ldm);
+DEVICE_INLINE
+void bmmaSync(fragment_c<ShapeBase<16, 8, 256>, int32_t> &d,
+              const fragment_a_rowmajor<ShapeBase<16, 8, 256>> &a,
+              const fragment_b_colmajor<ShapeBase<16, 8, 256>> &b,
+              const fragment_c<ShapeBase<16, 8, 256>, int32_t> &c);
+DEVICE_INLINE
+void storeMatrixSync(const fragment_c<ShapeBase<16, 8, 256>, int32_t> &c, int *base,
+                     const int offset, const int ldm);
+
 // *** implementation ***
 
 // ldmatrix
@@ -193,6 +243,125 @@ void storeMatrixSync(const fragment_c<ShapeBase<8, 8, 128>, int32_t> &c, int *ba
     *(base + offset_ + 1) = c.x[1];
 }
 
+// load a matrix [16, 128] rowmajor
+// ldm counts with integer pointers
+DEVICE_INLINE
+void loadMatrixSync(fragment_a_rowmajor<ShapeBase<16, 8, 128>> &a, const int *base,
+                    const int offset, const int ldm)
+{
+    int lane = threadIdx.x & 31;
+    int row = lane >> 2;
+    int col = lane % 4; // 32 b1 = 1 int
+    const int *src = base + offset + row * ldm + col;
+    a.x[0] = *(uint32_t *)src;
+    const int *src2 = base + offset + (row + 8) * ldm + col;
+    a.x[1] = *(uint32_t *)src2;
+}
+
+// load b matrix [128, 8] colmajor = [8, 128] rowmajor
+// ldm counts with integer pointers
+// base data [mma_N, mma_K] rowmajor = [mma_K, mma_N] colmajor
+// So just follow the normal rowmajor thread allocation to read.
+DEVICE_INLINE
+void loadMatrixSync(fragment_b_colmajor<ShapeBase<16, 8, 128>> &b, const int *base,
+                    const int offset, const int ldm)
+{
+    int lane = threadIdx.x & 31;
+    int row = lane >> 2;
+    int col = lane % 4; // 32 b1 = 1 int
+    const int *src = base + offset + row * ldm + col;
+    b.x = *(uint32_t *)src;
+}
+
+// a matrix [16, 128] rowmajor *  b matrix [128, 8] colmajor |  b matrix [8, 128] rowmajor
+DEVICE_INLINE void bmmaSync(fragment_c<ShapeBase<16, 8, 128>, int32_t> &d,
+                            const fragment_a_rowmajor<ShapeBase<16, 8, 128>> &a,
+                            const fragment_b_colmajor<ShapeBase<16, 8, 128>> &b,
+                            const fragment_c<ShapeBase<16, 8, 128>, int32_t> &c)
+{
+    ASSEMBLY("mma.sync.aligned.m16n8k128.row.col.s32.b1.b1.s32.and.popc"
+             "{%0, %1, %2, %3}, {%4, %5}, {%6}, {%7,%8,%9,%10};\n"
+             : "=r"(d.x[0]), "=r"(d.x[1]), "=r"(d.x[2]), "=r"(d.x[3])
+             : "r"(a.x[0]), "r"(a.x[1]), "r"(b.x), "r"(c.x[0]), "r"(c.x[1]), "r"(c.x[2]), "r"(c.x[3]));
+}
+
+DEVICE_INLINE
+void storeMatrixSync(const fragment_c<ShapeBase<16, 8, 128>, int32_t> &c, int *base,
+                     const int offset, const int ldm)
+{
+    int lane = threadIdx.x & 31;
+    int row = lane >> 2;
+    int col = (lane % 4) * 2; // // Each thread holds two s32 type data
+    int offset_ = offset + row * ldm + col;
+    *(base + offset_) = c.x[0];
+    *(base + offset_ + 1) = c.x[1];
+    int offset_2 = offset + (row + 8) * ldm + col;
+    *(base + offset_2) = c.x[2];
+    *(base + offset_2 + 1) = c.x[3];
+}
+
+// load a matrix [16, 256] rowmajor
+// ldm counts with integer pointers
+DEVICE_INLINE
+void loadMatrixSync(fragment_a_rowmajor<ShapeBase<16, 8, 256>> &a, const int *base,
+                    const int offset, const int ldm)
+{
+    int lane = threadIdx.x & 31;
+    int row = lane >> 2;
+    int col = lane % 4; // 32 b1 = 1 int
+    const int *src0 = base + offset + row * ldm + col;
+    a.x[0] = *(uint32_t *)src0;
+    const int *src1 = base + offset + (row + 8) * ldm + col;
+    a.x[1] = *(uint32_t *)src1;
+    const int *src2 = base + offset + row * ldm + col + 4;
+    a.x[2] = *(uint32_t *)src2;
+    const int *src3 = base + offset + (row + 8) * ldm + col + 4;
+    a.x[3] = *(uint32_t *)src3;
+}
+
+// load b matrix [128, 8] colmajor = [8, 128] rowmajor
+// ldm counts with integer pointers
+// base data [mma_N, mma_K] rowmajor = [mma_K, mma_N] colmajor
+// So just follow the normal rowmajor thread allocation to read.
+DEVICE_INLINE
+void loadMatrixSync(fragment_b_colmajor<ShapeBase<16, 8, 256>> &b, const int *base,
+                    const int offset, const int ldm)
+{
+    int lane = threadIdx.x & 31;
+    int row = lane >> 2;
+    int col = lane % 4; // 32 b1 = 1 int
+    const int *src0 = base + offset + row * ldm + col;
+    b.x[0] = *(uint32_t *)src0;
+    const int *src1 = base + offset + row * ldm + col + 4;
+    b.x[1] = *(uint32_t *)src1;
+}
+
+// a matrix [16, 128] rowmajor *  b matrix [128, 8] colmajor |  b matrix [8, 128] rowmajor
+DEVICE_INLINE void bmmaSync(fragment_c<ShapeBase<16, 8, 256>, int32_t> &d,
+                            const fragment_a_rowmajor<ShapeBase<16, 8, 256>> &a,
+                            const fragment_b_colmajor<ShapeBase<16, 8, 256>> &b,
+                            const fragment_c<ShapeBase<16, 8, 256>, int32_t> &c)
+{
+    ASSEMBLY("mma.sync.aligned.m16n8k256.row.col.s32.b1.b1.s32.and.popc"
+             "{%0, %1, %2, %3}, {%4, %5, %6, %7}, {%8, %9}, {%10, %11, %12, %13};\n"
+             : "=r"(d.x[0]), "=r"(d.x[1]), "=r"(d.x[2]), "=r"(d.x[3])
+             : "r"(a.x[0]), "r"(a.x[1]), "r"(a.x[2]), "r"(a.x[3]), "r"(b.x[0]), "r"(b.x[1]), "r"(c.x[0]), "r"(c.x[1]), "r"(c.x[2]), "r"(c.x[3]));
+}
+
+DEVICE_INLINE
+void storeMatrixSync(const fragment_c<ShapeBase<16, 8, 256>, int32_t> &c, int *base,
+                     const int offset, const int ldm)
+{
+    int lane = threadIdx.x & 31;
+    int row = lane >> 2;
+    int col = (lane % 4) * 2; // // Each thread holds two s32 type data
+    int offset_ = offset + row * ldm + col;
+    *(base + offset_) = c.x[0];
+    *(base + offset_ + 1) = c.x[1];
+    int offset_2 = offset + (row + 8) * ldm + col;
+    *(base + offset_2) = c.x[2];
+    *(base + offset_2 + 1) = c.x[3];
+}
 // #else
 
 //     assert(false && "bmma is not supported on this architecture( >= 75)\n");

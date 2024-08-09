@@ -1,3 +1,17 @@
+// Copyright (C) ABQ.2024 (liusongwei.zju@bytedance.com)
+// 
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+// 
+//          http://www.apache.org/licenses/LICENSE-2.0
+// 
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #pragma once
 #include "common/base.h"
 #include "mma_any/aq_bmma_kernel.h"
@@ -9,10 +23,10 @@ struct AqBMMAOpState {
     bool initSuccess = false;
     struct Argument_t {
         int M, N, K;
-        int *X;
-        int *W;
-        half *C;
-        int *D;
+        const int *X;
+        const int *W;
+        const half *C;
+        half *D;
         bool bias = false;
     } args;
 };
@@ -38,7 +52,7 @@ public:
     using KernelImpl =
         AqBMMAKernel<QuantType, ThreadBlockShape, WarpShape, MmaShape, NStage, AccumulatorType,
                      ASwizzle, BSwizzle, CSwizzle, true, true, false>;
-    void initialize(int *X, int *W, int M, int N, int K, int *D, half *C, bool bias);
+    void initialize(const int *X, const int *W, int M, int N, int K, half *D, const half *C, bool bias);
     void operator()(cudaStream_t stream = NULL);
 };
 
@@ -60,7 +74,7 @@ template <
     // pipeline config
     int NStage>
 void AqBMMAOp<QuantType, ThreadBlockShape, WarpShape, MmaShape, NStage>::initialize(
-    int *X, int *W, int M, int N, int K, int *D, half *C, bool bias)
+    const int *X, const int *W, int M, int N, int K, half *D, const half *C, bool bias)
 {
     assert(!bias && "Bias operation is not supported temporarily\n");
     // set argument
@@ -83,17 +97,23 @@ void AqBMMAOp<QuantType, ThreadBlockShape, WarpShape, MmaShape, NStage>::initial
             cudaSuccess != cudaFuncSetAttribute(launchAqBMMAKernel<KernelImpl>,
                                                 cudaFuncAttributePreferredSharedMemoryCarveout,
                                                 100)) {
+            int max_shared_mem;
+            cudaDeviceGetAttribute(&max_shared_mem, cudaDevAttrMaxSharedMemoryPerBlockOptin, 0);
             cudaError_t err = cudaGetLastError();
-            std::cerr << "Set kernel attribute failed: " << cudaGetErrorString(err);
+            std::cerr << "Set kernel attribute failed: " << cudaGetErrorString(err) << std::endl;
+            std::cerr
+                << "Kernel required " << this->state.shared_mem_size
+                << " shared memory but the max shared memory per block optin is: " << max_shared_mem
+                << std::endl;
             this->state.initSuccess = false;
         }
     }
     // printf("dyn shared_mem_size:%d\n", this->state.shared_mem_size);
     // calculate launch configuration
     int gdimX = KernelImpl::GridMapping ? (CEIL(M, KernelImpl::BLOCK_M)) :
-                                                (CEIL(N, KernelImpl::BLOCK_N));
+                                          (CEIL(N, KernelImpl::BLOCK_N));
     int gdimY = KernelImpl::GridMapping ? (CEIL(N, KernelImpl::BLOCK_N)) :
-                                                (CEIL(M, KernelImpl::BLOCK_M));
+                                          (CEIL(M, KernelImpl::BLOCK_M));
     this->state.gridDim = dim3(gdimX, gdimY, 1);
     this->state.blockDim = dim3(KernelImpl::blockDims, 1, 1);
     // printf("gdimX:%d gdimY:%d, KernelImpl::blockDim:%d\n", gdimX, gdimY, KernelImpl::blockDim);
@@ -124,7 +144,7 @@ template <
     typename ThreadBlockShape, typename WarpShape, typename MmaShape,
     // pipeline config
     int NStage>
-AqBMMAOpState AqBMMAInitFn(int *X, int *W, int M, int N, int K, int *D, half *C, bool bias)
+AqBMMAOpState AqBMMAInitFn(const int *X, const int *W, int M, int N, int K, half *D, const half *C, bool bias)
 {
     AqBMMAOp<QuantType, ThreadBlockShape, WarpShape, MmaShape, NStage> op;
     op.initialize(X, W, M, N, K, D, C, bias);
@@ -146,5 +166,5 @@ void AqBMMAExecFn(AqBMMAOpState &state, cudaStream_t stream = NULL)
         <<<state.gridDim, state.blockDim, state.shared_mem_size, stream>>>(state.args);
 }
 
-typedef AqBMMAOpState (*AqBMMAInitFn_t)(int *, int *, int, int, int, int *, half *, bool);
+typedef AqBMMAOpState (*AqBMMAInitFn_t)(const int *, const int *, int, int, int, half *, const half *, bool);
 typedef void (*AqBMMAExecFn_t)(AqBMMAOpState &, cudaStream_t);

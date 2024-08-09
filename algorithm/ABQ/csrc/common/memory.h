@@ -1,3 +1,17 @@
+// Copyright (C) ABQ.2024 (liusongwei.zju@bytedance.com)
+// 
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+// 
+//          http://www.apache.org/licenses/LICENSE-2.0
+// 
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 
 
 #pragma once
@@ -31,22 +45,3 @@ DEVICE_INLINE void cpAsyncPredZfill(void *smem_ptr, void const *gmem_ptr,
              "}\n" ::"r"((int)pred_guard),
              "r"(smem_int_ptr), "l"(gmem_ptr), "n"(SizeInBytes), "r"(src_in_bytes));
 }
-
-// template<int TileSize, int Nthreads> DEVICE_INLINE
-// void cpAsyncTile(int* smem_ptr, int* gmem_ptr, const int valid_size) {
-//     // assume zfill_size % 4 == 0;
-//     for (int i = threadIdx.x; i < ROUND_UP(TileSize, Nthreads); i += Nthreads) {
-//         bool valid = i < TileSize;
-//         int src_in_bytes = (i < valid_size) ? 4 : 0;
-//         unsigned dst = get_smem_ptr(smem_ptr + i);
-//         const void *src = gmem_ptr + i;
-//         ASSEMBLY (
-//             "{\n"
-//             "  .reg .pred p;\n"
-//             "  setp.ne.b32 p, %0, 0;\n"
-//             "  @p cp.async.ca.shared.global [%1], [%2], %3, %4;\n"
-//             "}\n" ::"r"((int)valid),
-//             "r"(dst), "l"(src), "n"(4), "r"(src_in_bytes)
-//         );
-//     }
-// }

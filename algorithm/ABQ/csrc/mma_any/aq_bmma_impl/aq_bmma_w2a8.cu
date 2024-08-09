@@ -12,8 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
 #include "common/base.h"
-#include "mma_any/aq_wmma_op.h"
+#include "mma_any/aq_bmma_op.h"
 
-#include "mma_any/aq_wmma_impl//aq_wmma_w2a8.h"
+// cta<1,48,512> warp<8,24,128> mma<8,8,128>   WARPS[1x4]
+AQ_INSTANTIATE_FUN(AqBMMA, 8, 2, true, 1, 48, 512, 8, 24, 128, 8, 8, 128, 4);
+AQ_INSTANTIATE_FUN(AqBMMA, 8, 2, false, 1, 48, 512, 8, 24, 128, 8, 8, 128, 4);
+// cta<8,48,256> warp<32,48,128> mma<8,8,128>   WARPS[2x2]
+AQ_INSTANTIATE_FUN(AqBMMA, 8, 2, true, 8, 48, 256, 32, 48, 128, 8, 8, 128, 5);
+AQ_INSTANTIATE_FUN(AqBMMA, 8, 2, false, 8, 48, 256, 32, 48, 128, 8, 8, 128, 5);

@@ -1,3 +1,17 @@
+// Copyright (C) ABQ.2024 (liusongwei.zju@bytedance.com)
+// 
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+// 
+//          http://www.apache.org/licenses/LICENSE-2.0
+// 
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #pragma once
 
 #include "common/base.h"
@@ -34,11 +48,12 @@ struct AqBMMAKernel {
     static constexpr int MMA_M = MmaShape::M;
     static constexpr int MMA_N = MmaShape::N;
     static constexpr int MMA_K = MmaShape::K;
+    static constexpr int SKEW = W_BITS * BLOCK_N % 16 == 0 ? 8 : 0;
     static constexpr bool quant_signed = QuantType::SIGNED;
     static constexpr int WARP_M_TILES = WARP_M / MMA_M;
     static constexpr int WARP_N_TILES = WARP_N / MMA_N;
-    static constexpr int X_WARPS_NUMS = BLOCK_M * X_BITS / MMA_M / WARP_M_TILES;
-    static constexpr int W_WARPS_NUMS = BLOCK_N * W_BITS / MMA_N / WARP_N_TILES;
+    static constexpr int X_WARPS_NUMS = CEIL(BLOCK_M * X_BITS, MMA_M) / WARP_M_TILES;
+    static constexpr int W_WARPS_NUMS = CEIL(BLOCK_N * W_BITS, MMA_N) / WARP_N_TILES;
     static_assert(WARP_K == MMA_K, "Only support warp shape K == Mma shape K.\n");
     static_assert(WARP_M % MMA_M == 0, "WARP_M must be an integer multiple of MMA_M.\n");
     static_assert(WARP_N % MMA_N == 0, "WARP_N must be an integer multiple of MMA_N.\n");
@@ -64,13 +79,13 @@ struct AqBMMAKernel {
 
     // The output results need to be stored in shem for scaling processing.
     static constexpr size_t output_buffer_size_static =
-        (BLOCK_M * X_BITS) * (BLOCK_N * W_BITS) * sizeof(int32_t);
-
+        (MMA_M * WARP_M_TILES * X_WARPS_NUMS) * (MMA_N * WARP_N_TILES * W_WARPS_NUMS + SKEW) *
+        sizeof(int32_t);
     // mainloop interface
     __device__ __forceinline__ void mainLoop(const int M, const int N, const int K, const int *X,
                                              const int *W, int *shared_mem_workspace);
 
-    __device__ __forceinline__ void epilogue(const int M, const int N, int *D,
+    __device__ __forceinline__ void epilogue(const int M, const int N, half *D,
                                              int *shared_mem_workspace, const half *C,
                                              bool bias = false);
 };
@@ -107,9 +122,9 @@ AqBMMAKernel<QuantType, ThreadBlockShape, WarpShape, MmaShape, kThreadBlockStage
     int x_bit_offset = M * row_offset;
     int w_bit_offset = N * row_offset;
     const int *x_panel = X + idx_block_M * BLOCK_M * row_offset;
-    int ldx = row_offset;
+    // int ldx = row_offset;
     const int *w_panel = W + idx_block_N * BLOCK_N * row_offset;
-    int ldw = row_offset;
+    // int ldw = row_offset;
 
     // compute shared memory buffer addresses
     constexpr int NStage = kThreadBlockStage;
@@ -121,8 +136,8 @@ AqBMMAKernel<QuantType, ThreadBlockShape, WarpShape, MmaShape, kThreadBlockStage
     constexpr int iter_copy_x = CEIL(size_of_tile_x / kAccess, blockDims);
     constexpr int iter_copy_w = CEIL(size_of_tile_w / kAccess, blockDims);
     // Assume that N is divisible by CTA
-    bool is_residue =
-        (M % BLOCK_M != 0) && (idx_block_M == (GridMappingXYToMN ? gridDim.x : gridDim.y) - 1);
+    // bool is_residue =
+    //     (M % BLOCK_M != 0) && (idx_block_M == (GridMappingXYToMN ? gridDim.x : gridDim.y) - 1);
 
     // compute shared memory offsets: Xbit and W bit
     // shared_mem X: [kThreadBlockStage, X_BITS, BLOCK_M, BLOCK_K]
@@ -140,8 +155,8 @@ AqBMMAKernel<QuantType, ThreadBlockShape, WarpShape, MmaShape, kThreadBlockStage
     // smem W col major [K, N] colmajor = [N, K] rowmajor
     const int smem_ldw = BLOCK_K / 32;
 
-    ASwizzle aSwizzle;
-    BSwizzle bSwizzle;
+    // ASwizzle aSwizzle;
+    // BSwizzle bSwizzle;
     // define mma buffers
     typedef typename aq_bmma::fragment_a_rowmajor<MmaShape> FragmentA;
     typedef typename aq_bmma::fragment_b_colmajor<MmaShape> FragmentB;
@@ -242,7 +257,7 @@ AqBMMAKernel<QuantType, ThreadBlockShape, WarpShape, MmaShape, kThreadBlockStage
     // Each warp is responsible for the calculation of [WARP_M, WARP_N] in the output
     // This corresponds to [WARP_M_TILES, WARP_N_TILES] MMA Tiles.
     int *shared_c = shared_mem_workspace;
-    const int smem_ldc = W_BITS * BLOCK_N;
+    const int smem_ldc = W_BITS * BLOCK_N + SKEW;
     int c_warp_offset = x_row * smem_ldc + w_row;
 #pragma unroll
     for (int m = 0; m < WARP_M_TILES; m++) {
@@ -447,7 +462,7 @@ AqBMMAKernel<QuantType, ThreadBlockShape, WarpShape, MmaShape, kThreadBlockStage
     // store C to shared memory
     __syncthreads();
     int *shared_c = shared_mem_workspace;
-    const int smem_ldc = W_BITS * BLOCK_N;
+    const int smem_ldc = W_BITS * BLOCK_N + SKEW;
     int c_warp_offset = x_row * smem_ldc + w_row;
 #pragma unroll
     for (int m = 0; m < WARP_M_TILES; m++) {
@@ -470,59 +485,17 @@ template <typename QuantType, typename ThreadBlockShape, typename WarpShape, typ
 __device__ __forceinline__ void
 AqBMMAKernel<QuantType, ThreadBlockShape, WarpShape, MmaShape, kThreadBlockStage, AccumulatorType,
              ASwizzle, BSwizzle, CSwizzle, UseRegisterDoubleBuffer, UseMinimumSync,
-             GridMappingXYToMN>::epilogue(const int M, const int N, int *D,
+             GridMappingXYToMN>::epilogue(const int M, const int N, half *D,
                                           int *shared_mem_workspace, const half *C, bool bias)
 {
     int idx_block_M = GridMappingXYToMN ? blockIdx.x : blockIdx.y;
     int idx_block_N = GridMappingXYToMN ? blockIdx.y : blockIdx.x;
-    // bool is_residue_n =
-    //    (N % BLOCK_N != 0) && (idx_block_N == (GridMappingXYToMN ? gridDim.y : gridDim.x) - 1);
-    // bool is_residue_m =
-    //    (M % BLOCK_M != 0) && (idx_block_M == (GridMappingXYToMN ? gridDim.x : gridDim.y) - 1);
-    // bool is_residue = is_residue_m || is_residue_n;
-    // int *d_tile = D + idx_block_M * BLOCK_M * N + idx_block_N * BLOCK_N;
-
-    // According to the x bit component and w bit component
-    // information corresponding to each Tile block,
-    // and the calculation symbol confirmation scaling coefficient
-
-    //     constexpr int iter_scale_c = CEIL(BLOCK_M * BLOCK_N, blockDims);
-    // #pragma unroll
-    //     for (size_t i = 0; i < iter_scale_c; i++)
-    //     {        int idx = threadIdx.x + blockDims * i;
-    //         // bool valid = (idx < BLOCK_M * BLOCK_N) &&
-    //         //              ((idx % BLOCK_N) < (N - BLOCK_N * idx_block_N)) &&
-    //         //              ((idx / BLOCK_N) < (M - BLOCK_M * idx_block_M)) ;
-    //         if (is_residue_n)
-    //             valid = valid && ((idx % BLOCK_N) < (N - BLOCK_N * idx_block_N));
-    //         if (is_residue_m)
-    //             valid = valid && ((idx / BLOCK_N) < (M - BLOCK_M * idx_block_M));
-    //         if (valid)
-    //         {
-    //             int *shmem_stream_ptr = (int *)shared_mem_workspace + idx;
-    //             int val = 0;
-    //             int base_multiplier = 1;
-    // #pragma unroll
-    //             for (int i = 0; i < X_BITS; i++) {
-    //                 int cur_multiplier = quant_signed && (i == X_BITS -1) ? -1 * base_multiplier : base_multiplier;
-    // #pragma unroll
-    //                 for (int j = 0; j < W_BITS; j++) {
-    //                     int tmp = *(shmem_stream_ptr + BLOCK_N * j);
-    //                     val += (cur_multiplier * tmp);
-    //                     cur_multiplier =  quant_signed && (j == W_BITS - 2) ? -2 * cur_multiplier : 2 * cur_multiplier;
-    //                 }
-    //                 base_multiplier *= 2;
-    //                 shmem_stream_ptr += BLOCK_M * BLOCK_N * W_BITS;
-    //             }
-    //             // store to global mem
-    //             d_tile[(idx / BLOCK_N) * N + (idx % BLOCK_N)] = val;
-    //         }
-    //     }
+    half scale = C[0];
 
     // Parallel reading and writing implementation
     IntVector<4> buffer;
     constexpr int CAccess = 4;
-    constexpr int smem_ldc = W_BITS * BLOCK_N;
+    constexpr int smem_ldc = W_BITS * BLOCK_N + SKEW;
     int idx =
         threadIdx.x / (BLOCK_N / CAccess) * smem_ldc + threadIdx.x % (BLOCK_N / CAccess) * CAccess;
     bool valid = (threadIdx.x * CAccess < BLOCK_M * BLOCK_N);
@@ -554,10 +527,10 @@ AqBMMAKernel<QuantType, ThreadBlockShape, WarpShape, MmaShape, kThreadBlockStage
                    threadIdx.x / (BLOCK_N / CAccess) * N +
                    threadIdx.x % (BLOCK_N / CAccess) * CAccess;
     if (gmem_idx < M * N) {
-        D[gmem_idx + 0] = buffer.x[0];
-        D[gmem_idx + 1] = buffer.x[1];
-        D[gmem_idx + 2] = buffer.x[2];
-        D[gmem_idx + 3] = buffer.x[3];
+        D[gmem_idx + 0] = __int2half_rn(buffer.x[0]) * scale;
+        D[gmem_idx + 1] = __int2half_rn(buffer.x[1]) * scale;
+        D[gmem_idx + 2] = __int2half_rn(buffer.x[2]) * scale;
+        D[gmem_idx + 3] = __int2half_rn(buffer.x[3]) * scale;
         // FIXME: missaligned address
         // int4 *d_ptr = reinterpret_cast<int4 *>(D + gmem_idx);
         // *d_ptr = *((int4 *)buffer.x);

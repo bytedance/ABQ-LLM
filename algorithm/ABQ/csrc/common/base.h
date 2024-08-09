@@ -1,3 +1,18 @@
+// Copyright (C) ABQ.2024 (liusongwei.zju@bytedance.com)
+// 
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+// 
+//          http://www.apache.org/licenses/LICENSE-2.0
+// 
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+
 #pragma once
 #include <cassert>
 #include <cuda.h>
@@ -92,6 +107,22 @@ template <int NStage> struct Pipeline<NStage, true> {
     void releaseReader()
     {
         ahead_stage--;
+    }
+};
+
+template <int N> struct HalfVector;
+
+template <> struct HalfVector<8> {
+    half x[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+    DEVICE_INLINE
+    void ld(const half *src)
+    {
+        *(int4 *)x = *(int4 *)src;
+    }
+    DEVICE_INLINE
+    void st(half *dst)
+    {
+        *(int4 *)dst = *(int4 *)x;
     }
 };
 

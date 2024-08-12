@@ -364,7 +364,7 @@ AqBMMAKernel<QuantType, ThreadBlockShape, WarpShape, MmaShape, kThreadBlockStage
                     int idx_m = idx / BLOCK_K % BLOCK_M;
                     int idx_k = idx % BLOCK_K;
                     bool valid = (idx < size_of_tile_x);
-                    int *dst = shared_tile_x + idx;
+                    int *dst = shared_tile_x + idx / 32;
                     if (valid)
                         *(int4 *)dst = copy_buffer_x[stage][i];
                 }
@@ -376,7 +376,7 @@ AqBMMAKernel<QuantType, ThreadBlockShape, WarpShape, MmaShape, kThreadBlockStage
                     int idx_n = idx / BLOCK_K % BLOCK_N;
                     int idx_k = idx % BLOCK_K;
                     bool valid = (idx < size_of_tile_w);
-                    int *dst = shared_tile_w + idx;
+                    int *dst = shared_tile_w + idx / 32;
                     if (valid)
                         *(int4 *)dst = copy_buffer_w[stage][i];
                 }

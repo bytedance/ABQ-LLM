@@ -78,9 +78,9 @@ def smooth_and_quant_temporary(model, args, isllama):
             smooth_ln_fcs_temporary(model.post_attention_layernorm,[model.mlp.up_proj,model.mlp.gate_proj],
                                     model.fc1_smooth_scale,model.fc1_smooth_shift)
             smooth_fc_fc_temporary(model.self_attn.v_proj,model.self_attn.o_proj,
-                                model.out_smooth_scale, model.out_smooth_shift)
+                                model.out_smooth_scale, model.out_smooth_shift, self_attn=model.self_attn)
             smooth_q_k_temporary(model.self_attn.q_proj, model.self_attn.k_proj,
-                                model.qkt_smooth_scale)
+                                model.qkt_smooth_scale, self_attn=model.self_attn)
             smooth_fc_fc_temporary(model.mlp.up_proj,model.mlp.down_proj,model.fc2_smooth_scale,model.fc2_smooth_shift) # 进行up & down的平衡
             # model.mlp.down_proj.temp_weight = model.mlp.down_proj.weight
         else:
@@ -139,7 +139,7 @@ def smooth_and_quant_inplace(model, args, isllama):
             smooth_ln_fcs_inplace(model.post_attention_layernorm,[model.mlp.up_proj,model.mlp.gate_proj],
                                     model.fc1_smooth_scale,model.fc1_smooth_shift)
             smooth_fc_fc_inplace(model.self_attn.v_proj,model.self_attn.o_proj,
-                                model.out_smooth_scale, model.out_smooth_shift)
+                                model.out_smooth_scale, model.out_smooth_shift, self_attn=model.self_attn)
             smooth_fc_fc_inplace(model.mlp.up_proj,model.mlp.down_proj,model.fc2_smooth_scale,model.fc2_smooth_shift) # 进行up & down的平衡
         else: # opt
             smooth_ln_fcs_inplace(model.self_attn_layer_norm,[model.self_attn.q_proj, model.self_attn.k_proj, model.self_attn.v_proj],
@@ -150,7 +150,7 @@ def smooth_and_quant_inplace(model, args, isllama):
                                 model.out_smooth_scale, model.out_smooth_shift)
             # smooth_fc_fc_inplace(model.fc1,model.fc2,model.fc2_smooth_scale, model.fc2_smooth_shift)
         smooth_q_k_inplace(model.self_attn.q_proj, model.self_attn.k_proj,
-                            model.qkt_smooth_scale)
+                            model.qkt_smooth_scale, self_attn=model.self_attn)
     for name, module in model.named_modules():
         if isinstance(module, QuantLinear):
             weight = module.weight

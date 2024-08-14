@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from models.int_llama_layer import QuantLlamaDecoderLayer
+from models.int_llama_layer import QuantLlamaDecoderLayer, QuantLlamaAttention
 from models.int_opt_layer import QuantOPTDecoderLayer
 from models.int_falcon_layer import QuantFalconDecoderLayer
 from quantize.int_linear import QuantLinear
@@ -199,7 +199,7 @@ def abqllm(
             for name, module in qlayer.named_modules():
                 if isinstance(module,torch.nn.Linear) and not "gate" in name:       # do not quantize gate
                     quantlinear = QuantLinear(module, args.weight_quant_params, args.act_quant_params)
-                    add_new_module(name, qlayer, quantlinear)    
+                    add_new_module(name, qlayer, quantlinear)
         else:
             qlayer = DecoderLayer(lm.model.config, layer, args)
         qlayer = qlayer.to(dev)
@@ -221,7 +221,7 @@ def abqllm(
             use_shift = False                   # deactivate channel-wise shifting for llama model and weight-only quantization
         if args.let:
             # init channel-wise scaling and shift
-            qlayer.register_parameter("qkt_smooth_scale",torch.nn.Parameter(torch.ones(layer.self_attn.q_proj.out_features,device=dev, dtype=dtype)))
+            qlayer.register_parameter("qkt_smooth_scale",torch.nn.Parameter(torch.ones(layer.self_attn.k_proj.out_features,device=dev, dtype=dtype)))
             for name,module in qlayer.named_modules():
                 if isinstance(module, QuantLinear):
                     for key in pairs.keys():
@@ -233,6 +233,14 @@ def abqllm(
                                 shift = act_shifts[f"{layer_name_prefix}.{i}.{name}"].to(device=dev, dtype=dtype)
                             else:
                                 shift = torch.zeros_like(scale)
+
+                            if is_llama and "self_attn.o_proj"  in name and qlayer.self_attn.num_key_value_groups > 1:
+                                self_attn = qlayer.self_attn
+                                self_attn: QuantLlamaAttention
+                                scale = scale.reshape(self_attn.num_key_value_heads,self_attn.num_key_value_groups,-1) 
+                                scale = scale[:,0,:].reshape(-1)
+                                shift = torch.zeros_like(scale)
+
                             qlayer.register_parameter(f"{pairs[key]}_smooth_shift",torch.nn.Parameter(shift))
                             qlayer.register_parameter(f"{pairs[key]}_smooth_scale",torch.nn.Parameter(scale))
                     

@@ -156,7 +156,8 @@ The performance upper limit depends on how the search space is defined (the inst
 ![zero_shot](fig/zero-shot.png)
 - On kernel inference acceleration, ABQ- LLM achieves performance gains that far exceed those of CUTLASS and CUBLAS.
 ![kernel_speed](fig/kernel_speed.png)
-
+- We integrated our ABQKernel into FastTransformer and compared it with the FP16 version of FastTransformer and the INT8 version of SmoothQuant. Our approach achieved a 2.8x speedup and 4.8x memory compression over FP16, using only 10GB of memory on LLaMA-30B, less than what FP16 requires for LLaMA-7B. Additionally, it outperformed SmoothQuant with a 1.6x speedup and 2.7x memory compression.
+![e2e_speed](fig/e2e_speed.png)
 
 
 ## Related Project

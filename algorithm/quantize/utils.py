@@ -81,7 +81,7 @@ def smooth_and_quant_temporary(model, args, isllama):
                                 model.out_smooth_scale, model.out_smooth_shift, self_attn=model.self_attn)
             smooth_q_k_temporary(model.self_attn.q_proj, model.self_attn.k_proj,
                                 model.qkt_smooth_scale, self_attn=model.self_attn)
-            smooth_fc_fc_temporary(model.mlp.up_proj,model.mlp.down_proj,model.fc2_smooth_scale,model.fc2_smooth_shift) # 进行up & down的平衡
+            smooth_fc_fc_temporary(model.mlp.up_proj,model.mlp.down_proj,model.fc2_smooth_scale,model.fc2_smooth_shift) # balance up & down
             # model.mlp.down_proj.temp_weight = model.mlp.down_proj.weight
         else:
             smooth_ln_fcs_temporary(model.self_attn_layer_norm,[model.self_attn.q_proj, model.self_attn.k_proj, model.self_attn.v_proj],
@@ -140,7 +140,7 @@ def smooth_and_quant_inplace(model, args, isllama):
                                     model.fc1_smooth_scale,model.fc1_smooth_shift)
             smooth_fc_fc_inplace(model.self_attn.v_proj,model.self_attn.o_proj,
                                 model.out_smooth_scale, model.out_smooth_shift, self_attn=model.self_attn)
-            smooth_fc_fc_inplace(model.mlp.up_proj,model.mlp.down_proj,model.fc2_smooth_scale,model.fc2_smooth_shift) # 进行up & down的平衡
+            smooth_fc_fc_inplace(model.mlp.up_proj,model.mlp.down_proj,model.fc2_smooth_scale,model.fc2_smooth_shift) # balance up & down
         else: # opt
             smooth_ln_fcs_inplace(model.self_attn_layer_norm,[model.self_attn.q_proj, model.self_attn.k_proj, model.self_attn.v_proj],
                                     model.qkv_smooth_scale,model.qkv_smooth_shift)

@@ -12,8 +12,8 @@ __global__ void pack_int(const uint4* in_data, unsigned int* packed_data, const 
     const int          L   = M * (K / 32);
     for (int idx = blockIdx.x * blockDim.x + threadIdx.x; idx < L; idx += blockDim.x) {
         unsigned int pack_val = 0;
-        // 1个线程需要读32个32-bit int来packing成一个32-bit int
-        // 每次以128-bit int4读16Bytes, 循环8次
+        // Each threads read thirty two 32-bit int elements to pack one 32-bit element
+        // Read 16B at a time and loop 8 times
         for (int i = 0; i < 8; ++i) {
             const uint4 val = in_data[idx * 8 + i];
             pack_val |= ((val.x >> bit) & 0x1) << (32 - 1 - i * 4);
@@ -33,8 +33,8 @@ __global__ void pack_half(const half* in_data, const float* scale, unsigned int*
     const half         local_scale = __float2half(scale[0]);
     for (int idx = blockIdx.x * blockDim.x + threadIdx.x; idx < L; idx += blockDim.x) {
         unsigned int pack_val = 0;
-        // 1个线程需要读32个16-bit half, 反量化成int后packing成一个32-bit int
-        // 每次以128-bit float4读16Bytes, 循环4次
+        // Each threads read thirty two 16-bit half elements to pack one 32-bit element
+        // Read 16B at a time and loop 4 times
         for (int i = 0; i < 4; ++i) {
             HalfVector<8> val;
             val.ld(in_data + idx * 32 + i * 8);

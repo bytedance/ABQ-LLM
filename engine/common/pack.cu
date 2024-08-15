@@ -49,8 +49,8 @@ __global__ void pack(const uint4 *in_data, unsigned int *pack_data, const int m,
     const int L = m * (k / 32);
     for (int idx = blockIdx.x * blockDim.x + threadIdx.x; idx < L; idx += blockDim.x) {
         unsigned int pack_val = 0;
-        // 1个线程需要读32个32-bit int来packing成一个32-bit int
-        // 每次以128-bit int4读16Bytes, 循环8次
+        // each threads read thirty two 32-bit elements to pack one 32-bit element
+        // read 16B
         for (int i = 0; i < 8; ++i) {
             const uint4 val = in_data[idx * 8 + i];
             pack_val |= ((val.x >> bit) & 0x1) << (32 - 1 - i * 4);

@@ -105,11 +105,10 @@ More detailed and optional arguments:
 - `--let`: activate the Learnable Equivalent Transformation (LET).
 - `--lwc_lr`: learning rate of LWC parameters, 1e-2 as default.
 - `--let_lr`: learning rate of LET parameters, 5e-3 as default.
-- `--epochs`: training epochs. You can set it as 0 to evaluate pre-trained OmniQuant checkpoints.
+- `--epochs`: training epochs. You can set it as 0 to evaluate pre-trained ABQ-LLM checkpoints.
 - `--nsamples`: number of calibration samples, 128 as default.
 - `--eval_ppl`: evaluating the perplexity of quantized models.
 - `--tasks`: evaluating zero-shot tasks.
-- `--resume`: loading pre-trained OmniQuant parameters.
 - `--multigpu`: to inference larger network on multiple GPUs
 - `--real_quant`: real quantization, which can see memory reduce. Note that due to the limitations of AutoGPTQ kernels, the real quantization of weight-only quantization can only lead memory reduction, but with slower inference speed.
 - `--save_dir`: saving the quantization model for further exploration.

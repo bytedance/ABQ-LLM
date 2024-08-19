@@ -105,7 +105,7 @@ def build_model_and_tokenizer(model_name):
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--model', type=str,
-                        default='/cpfs01/user/chenmengzhao/llama_quantization/llama-hf/llama-7b', help='model name')
+                        default='/PATH/TO/LLaMA/Llama-2-7b', help='model name')
     parser.add_argument('--scales-output-path', type=str, default='./act_scales/',
                         help='where to save the act scales')
     parser.add_argument('--shifts-output-path', type=str, default='./act_shifts/',

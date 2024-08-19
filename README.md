@@ -174,6 +174,10 @@ The performance upper limit depends on how the search space is defined (the inst
 ## Citation
 If you use our ABQ-LLM approach in your research, please cite our paper:
 ```
-@article{
+@article{zeng2024abqllm,
+  title={ABQ-LLM: Arbitrary-Bit Quantized Inference Acceleration for Large Language Models},
+  author={Chao Zeng and Songwei Liu and Yusheng Xie and Hong Liu and Xiaojian Wang and Miao Wei and Shu Yang and Fangmin Chen and Xing Mei},
+  journal={arXiv preprint arXiv:2408.08554},
+  year={2024}
 }
 ```

@@ -347,7 +347,7 @@ def main():
         )
         logger.info(time.time() - tick)
     if args.save_dir:
-        # delete omni parameters
+        # delete smooth parameters
         for name, module in lm.model.named_modules():
             if isinstance(module, QuantLinear):
                 del module.weight_quantizer.lowbound_factor

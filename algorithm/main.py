@@ -238,8 +238,6 @@ def main():
     torch.manual_seed(args.seed)
     torch.cuda.manual_seed(args.seed)
         
-    if (args.wbits<16 and args.wbits>=8) or (args.abits<16 and args.abits>=8):
-        args.deactive_amp = True  # 不启动混合精度
     args.deactive_amp = True
     # init logger
     if args.output_dir:

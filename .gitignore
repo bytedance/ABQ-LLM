@@ -2,6 +2,8 @@
 build
 build_32
 build_64
+build_linux
+build_win
 libs
 .vs 
 *obj
@@ -23,3 +25,5 @@ log
 results
 *.egg-info
 dist
+bin
+engine/bin

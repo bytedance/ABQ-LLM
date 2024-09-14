@@ -146,6 +146,30 @@ Based on the above optimizations, you can quickly expand our code to support new
 
 The performance upper limit depends on how the search space is defined (the instantiated function configuration). For related experience, please refer to the paper or the existing implementation in this directory.
 
+### E2E Benchmark
+
+1.Config llama (Change precision in examples/cpp/llama/llama_config.ini)
+```
+fp16:  int8_mode=0
+w8a16: int8_mode=1
+w8a8:  int8_mode=2
+w4a16: int8_mode=4
+w2a8:  int8_mode=5
+```
+
+2. Run llama on single GPU
+```
+cd build_release
+./bin/llama_example
+```
+
+3. (Optional) Run in multi GPU. Change tensor_para_size=2 in examples/cpp/llama/llama_config.ini
+
+```
+cd build_release
+mpirun -n 2 ./bin/llama_example
+```
+
 ## Results
 - ABQ-LLM achieve SoTA performance in weight-only quantization
 ![weight_only](fig/weight-only.png)

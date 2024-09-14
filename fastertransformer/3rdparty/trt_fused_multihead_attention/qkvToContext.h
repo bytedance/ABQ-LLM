@@ -1,0 +1,263 @@
+/*
+ * Copyright (c) 2020, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include <cassert>
+#include <cstring>
+#include <iostream>
+#include <tuple>
+#include <vector>
+
+#include <cublas_v2.h>
+#include <cuda_fp16.h>
+#include <cuda_runtime.h>
+
+#include "../trt_fp8_fmha/fused_multihead_attention.h"
+#include "fused_multihead_attention_v2.h"
+#include "src/fastertransformer/utils/cuda_utils.h"
+#pragma once
+
+namespace fastertransformer {
+
+class MHARunner {
+public:
+    MHARunner(const int numHeads, const int headSize, const int wordSize, const float q_scaling):
+        mS(0),
+        mB(0),
+        mOmatSize(0),
+        mNumMats(0),
+        mNumHeads(numHeads),
+        mHeadSize(headSize),
+        mWordSize(wordSize),
+        mLdQKV(0),
+        mStrideQKV(0),
+        mLdOut(0),
+        mStrideOut(0),
+        mRsqrtHeadSize(1.f / (sqrtf(headSize) * q_scaling))
+    {
+    }
+
+    virtual ~MHARunner() = default;
+
+    virtual void setup(const int S, const int B)
+    {
+        assert(S);
+        assert(B);
+        mB = B;
+        mS = S;
+
+        mLdQKV     = 3 * B * mNumHeads * mHeadSize;
+        mStrideQKV = 3 * mHeadSize;
+
+        mLdOut     = B * mNumHeads * mHeadSize;
+        mStrideOut = mHeadSize;
+        mOmatSize  = S * S;
+        mNumMats   = B * mNumHeads;
+    }
+
+    virtual void setup_causal_masked_fmha(const int S, const int B)
+    {
+        setup(S, B);
+    };
+
+    virtual bool fmha_supported(bool causal_mask)
+    {
+        return false;
+    };
+
+    virtual void setup(const int S, const int B, const int window_num)
+    {
+        setup(S, B);
+    }
+    virtual void setup_flags(const bool interleaved,
+                             const bool ignore_b1opt,
+                             const bool force_unroll,
+                             const bool use_int8_scale_max,
+                             const bool use_tma)
+    {
+        return;
+    };
+
+    virtual void run(const void* input, const void* mask, void* workspace, void* output, cudaStream_t stream) = 0;
+    virtual void run(const void*  input,
+                     const void*  mask,
+                     const void*  seqlen,
+                     void*        workspace,
+                     void*        output,
+                     cudaStream_t stream)                                                                     = 0;
+    virtual void run(const void*  input,
+                     const void*  mask,
+                     const void*  relative_position_bias,
+                     const int    actual_seqlen,
+                     void*        workspace,
+                     void*        output,
+                     cudaStream_t stream)                                                                     = 0;
+    virtual void run_causal_masked_fmha(
+        const void* input, const void* cu_seqlens, void* output, bool causal_mask, cudaStream_t stream)
+    {
+        // unimplemented
+        ;
+    }
+
+    virtual void setScaleList(const float scaleQkv, const float dqProbs, const float scaleCtx) = 0;
+
+    virtual size_t getWorkspaceSize() const = 0;
+
+    virtual bool isValid(int s, const bool withRelativePositionBias) const = 0;
+
+    virtual int getSFromMaxSeqLen(const int max_seq_len, const bool withRelativePositionBias = false) = 0;
+
+protected:
+    int mS;
+    int mB;
+    int mOmatSize;
+    int mNumMats;
+    int mNumHeads;
+    int mHeadSize;
+    int mWordSize;
+    int mLdQKV;
+    int mStrideQKV;
+    int mLdOut;
+    int mStrideOut;
+
+    float mRsqrtHeadSize;
+};
+
+class FusedMHARunnerFP16v2: public MHARunner {
+public:
+    FusedMHARunnerFP16v2(const int numHeads, const int headSize, const int sm, const float q_scaling);
+    ~FusedMHARunnerFP16v2() = default;  // for pimpl
+
+    virtual void setup(const int S, const int B) override;
+    virtual void setup_causal_masked_fmha(const int S, const int B) override;
+    virtual void setup(const int S, const int B, const int window_num) override;
+
+    virtual bool fmha_supported(bool causal_mask) override;
+
+    void run(const void* input, const void* mask, void* workspace, void* output, cudaStream_t stream);
+    void run(const void*  input,
+             const void*  mask,
+             const void*  seqlen,
+             void*        workspace,
+             void*        output,
+             cudaStream_t stream) override;
+    void run_causal_masked_fmha(
+        const void* input, const void* cu_seqlens, void* output, bool causal_mask, cudaStream_t stream) override;
+    void run(const void*  input,
+             const void*  mask,
+             const void*  relative_position_bias,
+             const int    actual_seqlen,
+             void*        workspace,
+             void*        output,
+             cudaStream_t stream) override;
+
+    void setScaleList(const float scaleQkv, const float dqProbs, const float scaleCtx) override;
+
+    size_t getWorkspaceSize() const override;
+
+    bool isValid(int s, const bool withRelativePositionBias) const override;
+
+    int getSFromMaxSeqLen(const int max_seq_len, const bool withRelativePositionBias = false) override;
+
+private:
+    int mSm;
+    class mhaImpl;
+    std::unique_ptr<mhaImpl> pimpl;
+};
+
+class FusedMHARunnerInt8v2: public MHARunner {
+public:
+    FusedMHARunnerInt8v2(const int numHeads, const int headSize, const int sm, const float q_scaling);
+    ~FusedMHARunnerInt8v2() = default;  // for pimpl
+
+    void setScaleList(const float scaleQkv, const float dqProbs, const float scaleCtx);
+
+    virtual void setup(const int S, const int B) override;
+    virtual void setup(const int S, const int B, const int window_num) override;
+
+    void run(const void* input, const void* mask, void* workspace, void* output, cudaStream_t stream);
+    void run(const void*  input,
+             const void*  mask,
+             const void*  seqlen,
+             void*        workspace,
+             void*        output,
+             cudaStream_t stream) override;
+    void run(const void*  input,
+             const void*  mask,
+             const void*  relative_position_bias,
+             const int    actual_seqlen,
+             void*        workspace,
+             void*        output,
+             cudaStream_t stream) override;
+
+    size_t getWorkspaceSize() const override;
+
+    bool isValid(int s, const bool withRelativePositionBias) const override;
+
+    int getSFromMaxSeqLen(const int max_seq_len, const bool withRelativePositionBias = false) override;
+
+private:
+    float mDqProbs, mScaleQkv, mScaleCtx;
+    int   mSm;
+    class mhaImpl;
+    std::unique_ptr<mhaImpl> pimpl;
+};
+
+#ifdef ENABLE_FP8
+class FusedMHARunnerFP8v2: public MHARunner {
+public:
+    FusedMHARunnerFP8v2(const int numHeads, const int headSize, const int sm, const float q_scaling);
+    ~FusedMHARunnerFP8v2() = default;  // for pimpl
+
+    virtual void setup(const int S, const int B) override;
+    virtual void setup(const int S, const int B, const int window_num) override;
+    virtual void setup_flags(const bool interleaved,
+                             const bool ignore_b1opt,
+                             const bool force_unroll,
+                             const bool use_int8_scale_max,
+                             const bool use_tma) override;
+
+    void run(const void* input, const void* mask, void* workspace, void* output, cudaStream_t stream);
+    void run(const void*  input,
+             const void*  mask,
+             const void*  seqlen,
+             void*        workspace,
+             void*        output,
+             cudaStream_t stream) override;
+    void run(const void*  input,
+             const void*  mask,
+             const void*  relatice_position_bias,
+             const int    actual_seqlen,
+             void*        workspace,
+             void*        output,
+             cudaStream_t stream) override;
+
+    void setScaleList(const float scaleQkv, const float dqProbs, const float scaleCtx) override;
+
+    size_t getWorkspaceSize() const override;
+
+    bool isValid(int s, const bool withRelativePositionBias) const override;
+
+    int getSFromMaxSeqLen(const int max_seq_len, const bool withRelativePositionBias = false) override;
+
+private:
+    float mDqProbs, mScaleQkv, mScaleCtx;
+    int   mSm;
+    class mhaImpl;
+    std::unique_ptr<mhaImpl> pimpl;
+};
+#endif  // ENABLE_FP8
+
+}  // namespace fastertransformer

@@ -148,7 +148,13 @@ The performance upper limit depends on how the search space is defined (the inst
 
 ### E2E Benchmark
 
-1.Config llama (Change precision in examples/cpp/llama/llama_config.ini)
+1. Compile the fastertransformer
+```
+cd fastertransformer
+bash build.sh
+``` 
+
+2. Config llama (Change precision in examples/cpp/llama/llama_config.ini)
 ```
 fp16:  int8_mode=0
 w8a16: int8_mode=1
@@ -157,13 +163,13 @@ w4a16: int8_mode=4
 w2a8:  int8_mode=5
 ```
 
-2. Run llama on single GPU
+3. Run llama on single GPU
 ```
 cd build_release
 ./bin/llama_example
 ```
 
-3. (Optional) Run in multi GPU. Change tensor_para_size=2 in examples/cpp/llama/llama_config.ini
+4. (Optional) Run in multi GPU. Change tensor_para_size=2 in examples/cpp/llama/llama_config.ini
 
 ```
 cd build_release

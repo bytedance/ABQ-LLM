@@ -1,7 +1,6 @@
 *~
 *.o
 *build*/
-./models/
 __pycache__/
 .idea
 ./translation
@@ -9,7 +8,6 @@ __pycache__/
 *.npy
 *.pth
 !tests/data/**/*.npy
-/models
 /notebooks
 **/.ipynb_checkpoints/
 

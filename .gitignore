@@ -16,7 +16,6 @@ sdk/*
 *.vscode
 build_*
 .cache
-models
 bin
 libs
 cmake-build-debug/*

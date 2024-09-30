@@ -211,3 +211,7 @@ If you use our ABQ-LLM approach in your research, please cite our paper:
   year={2024}
 }
 ```
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=bytedance/ABQ-LLM&type=Date)](https://star-history.com/#bytedance/ABQ-LLM&Date)
